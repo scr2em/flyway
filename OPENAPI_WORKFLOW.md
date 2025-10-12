@@ -238,9 +238,9 @@ target/generated-sources/openapi/src/main/java/com/Flyway/Flyway/dto/generated/
 ### 3. Using Generated DTOs in Controllers
 
 ```java
-package com.Flyway.Flyway.controller;
+package com.Flyway.server.controller;
 
-import com.Flyway.Flyway.dto.generated.*;
+import com.Flyway.server.dto.generated.*;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
@@ -267,7 +267,7 @@ public class UserController {
 From the OpenAPI spec above, this Java class is generated:
 
 ```java
-package com.Flyway.Flyway.dto.generated;
+package com.Flyway.server.dto.generated;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -514,8 +514,8 @@ public class CreateUserRequest {
 **Update Controller:**
 ```java
 // Change import
-// import com.Flyway.Flyway.dto.request.CreateUserRequest;
-import com.Flyway.Flyway.dto.generated.CreateUserRequest;
+// import com.Flyway.server.dto.request.CreateUserRequest;
+import com.Flyway.server.dto.generated.CreateUserRequest;
 
 // No other changes needed!
 @PostMapping

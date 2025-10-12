@@ -9,9 +9,9 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>com.Flyway</groupId>
-	<artifactId>Flyway</artifactId>
+	<artifactId>server</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>Flyway</name>
+	<name>server</name>
 	<description>Provide live updates for capacitor apps</description>
 	<url/>
 	<licenses>
@@ -149,8 +149,8 @@
 							<inputSpec>${project.basedir}/openapi.yaml</inputSpec>
 							<generatorName>spring</generatorName>
 							<output>${project.build.directory}/generated-sources/openapi</output>
-							<apiPackage>com.Flyway.Flyway.api</apiPackage>
-							<modelPackage>com.Flyway.Flyway.dto.generated</modelPackage>
+							<apiPackage>com.Flyway.server.api</apiPackage>
+							<modelPackage>com.Flyway.server.dto.generated</modelPackage>
 							<generateApis>false</generateApis>
 							<generateModels>true</generateModels>
 							<generateSupportingFiles>false</generateSupportingFiles>
@@ -245,7 +245,7 @@
 							<inputSchema>flyway_db</inputSchema>
 						</database>
 						<target>
-							<packageName>com.Flyway.Flyway.jooq</packageName>
+							<packageName>com.Flyway.server.jooq</packageName>
 							<directory>target/generated-sources/jooq</directory>
 						</target>
 					</generator>

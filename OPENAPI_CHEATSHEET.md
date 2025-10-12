@@ -49,7 +49,7 @@ graph LR
 
 1. **Define schema** in `openapi.yaml`
 2. **Generate code**: `mvn generate-sources`
-3. **Import DTO**: `import com.Flyway.Flyway.dto.generated.*;`
+3. **Import DTO**: `import com.Flyway.server.dto.generated.*;`
 4. **Use in controller**: `public UserResponse create(@Valid @RequestBody CreateUserRequest req)`
 
 ---
@@ -288,7 +288,7 @@ The `pom.xml` includes:
     <configuration>
         <inputSpec>${project.basedir}/openapi.yaml</inputSpec>
         <generatorName>spring</generatorName>
-        <modelPackage>com.Flyway.Flyway.dto.generated</modelPackage>
+        <modelPackage>com.Flyway.server.dto.generated</modelPackage>
         <generateModels>true</generateModels>
         <generateApis>false</generateApis>
         <configOptions>

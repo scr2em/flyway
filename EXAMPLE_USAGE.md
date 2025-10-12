@@ -58,10 +58,10 @@ components:
 ### Using in Controller
 
 ```java
-package com.Flyway.Flyway.controller;
+package com.Flyway.server.controller;
 
-import com.Flyway.Flyway.dto.generated.*;
-import com.Flyway.Flyway.service.UserService;
+import com.Flyway.server.dto.generated.*;
+import com.Flyway.server.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -134,12 +134,12 @@ public class UserController {
 ## Service Layer Example
 
 ```java
-package com.Flyway.Flyway.service;
+package com.Flyway.server.service;
 
-import com.Flyway.Flyway.dto.generated.*;
-import com.Flyway.Flyway.jooq.tables.records.UsersRecord;
-import com.Flyway.Flyway.repository.UserRepository;
-import com.Flyway.Flyway.exception.ResourceNotFoundException;
+import com.Flyway.server.dto.generated.*;
+import com.Flyway.server.jooq.tables.records.UsersRecord;
+import com.Flyway.server.repository.UserRepository;
+import com.Flyway.server.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -439,10 +439,10 @@ public class GlobalExceptionHandler {
 Create a mapper utility:
 
 ```java
-package com.Flyway.Flyway.util;
+package com.Flyway.server.util;
 
-import com.Flyway.Flyway.dto.generated.*;
-import com.Flyway.Flyway.jooq.tables.records.*;
+import com.Flyway.server.dto.generated.*;
+import com.Flyway.server.jooq.tables.records.*;
 import org.springframework.stereotype.Component;
 
 @Component

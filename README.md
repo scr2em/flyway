@@ -81,7 +81,7 @@ This project uses **OpenAPI as the single source of truth** for API contracts. J
 
 3. **Use Generated DTOs in Controllers**
    ```java
-   import com.Flyway.Flyway.dto.generated.*;
+   import com.Flyway.server.dto.generated.*;
    
    @PostMapping
    public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
