@@ -6,11 +6,13 @@ import com.Flyway.server.dto.generated.OrganizationMemberResponse;
 import com.Flyway.server.dto.generated.RoleResponse;
 import com.Flyway.server.dto.generated.UserResponse;
 import com.Flyway.server.jooq.tables.records.OrganizationMembersRecord;
+import com.Flyway.server.jooq.tables.records.OrganizationsRecord;
 import com.Flyway.server.jooq.tables.records.RolesRecord;
 import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
+import com.Flyway.server.repository.OrganizationRepository;
 import com.Flyway.server.repository.RoleRepository;
 import com.Flyway.server.repository.UserRepository;
 
@@ -30,6 +32,7 @@ public class OrganizationMemberService {
     private final OrganizationMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final OrganizationRepository organizationRepository;
     private final UserService userService;
     private final RoleService roleService;
     
@@ -83,6 +86,11 @@ public class OrganizationMemberService {
         OrganizationMembersRecord member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization member", "id", memberId));
         
+        // Check if member is the organization owner
+        if (isOrganizationOwner(member)) {
+            throw new ForbiddenException("Cannot change the role of the organization owner. The organization must always have an owner.");
+        }
+        
         // Check if role exists and belongs to same organization
         RolesRecord role = roleRepository.findById(request.getRoleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", request.getRoleId()));
@@ -100,8 +108,13 @@ public class OrganizationMemberService {
     
     @Transactional
     public void removeMember(String memberId) {
-        memberRepository.findById(memberId)
+        OrganizationMembersRecord member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization member", "id", memberId));
+        
+        // Check if member is the organization owner
+        if (isOrganizationOwner(member)) {
+            throw new ForbiddenException("Cannot remove the organization owner. The organization must always have an owner.");
+        }
         
         memberRepository.delete(memberId);
     }
@@ -113,6 +126,20 @@ public class OrganizationMemberService {
         if (!member.getOrganizationId().equals(organizationId)) {
             throw new ForbiddenException("You do not have access to this member");
         }
+    }
+    
+    /**
+     * Check if a member is the organization owner by comparing their user ID
+     * with the created_by field in the organizations table
+     */
+    private boolean isOrganizationOwner(OrganizationMembersRecord member) {
+        String organizationId = member.getOrganizationId();
+        String userId = member.getUserId();
+        
+        OrganizationsRecord organization = organizationRepository.findById(organizationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", organizationId));
+        
+        return organization.getCreatedBy().equals(userId);
     }
     
     private OrganizationMemberResponse mapToMemberResponse(OrganizationMembersRecord record) {

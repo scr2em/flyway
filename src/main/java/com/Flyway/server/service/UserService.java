@@ -73,6 +73,12 @@ public class UserService {
         userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
         
+        // Check if user is an organization owner
+        List<?> ownedOrganizations = organizationRepository.findByCreatedBy(id);
+        if (!ownedOrganizations.isEmpty()) {
+            throw new ForbiddenException("Cannot delete user who is an organization owner. Please transfer ownership or delete the organization first.");
+        }
+        
         userRepository.delete(id);
     }
     
