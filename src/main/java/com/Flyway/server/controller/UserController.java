@@ -76,8 +76,13 @@ public class UserController {
     }
     
     @PostMapping("/{id}/verify-email")
-    @RequirePermission("user.verify_email")
-    public ResponseEntity<UserResponse> verifyEmail(@PathVariable String id) {
+    public ResponseEntity<UserResponse> verifyEmail(
+            @PathVariable String id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Users can only verify their own email
+        if (!id.equals(userDetails.getId())) {
+            throw new ForbiddenException("You can only verify your own email address");
+        }
         UserResponse user = userService.verifyEmail(id);
         return ResponseEntity.ok(user);
     }
