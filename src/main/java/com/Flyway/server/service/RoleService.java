@@ -9,6 +9,7 @@ import com.Flyway.server.exception.BadRequestException;
 import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
+import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.PermissionRepository;
 import com.Flyway.server.repository.RolePermissionRepository;
 import com.Flyway.server.repository.RoleRepository;
@@ -31,6 +32,7 @@ public class RoleService {
     private final RoleRepository roleRepository;
     private final RolePermissionRepository rolePermissionRepository;
     private final PermissionRepository permissionRepository;
+    private final OrganizationMemberRepository organizationMemberRepository;
     
     public RoleResponse getRoleById(String id) {
         RolesRecord role = roleRepository.findById(id)
@@ -107,6 +109,11 @@ public class RoleService {
         // Check if role is immutable (byte 1 = true)
         if (role.getIsImmutable() != 0) {
             throw new BadRequestException("Cannot delete immutable role");
+        }
+        
+        // Check if role has any members assigned to it
+        if (!organizationMemberRepository.findByRoleId(id).isEmpty()) {
+            throw new ConflictException("Cannot delete role that has members assigned to it. Please reassign or remove members first.");
         }
         
         roleRepository.delete(id);

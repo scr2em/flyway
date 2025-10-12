@@ -36,6 +36,12 @@ public class OrganizationMemberRepository {
                 .fetch();
     }
     
+    public List<OrganizationMembersRecord> findByRoleId(String roleId) {
+        return dsl.selectFrom(ORGANIZATION_MEMBERS)
+                .where(ORGANIZATION_MEMBERS.ROLE_ID.eq(roleId))
+                .fetch();
+    }
+    
     public Optional<OrganizationMembersRecord> findByOrganizationIdAndUserId(String organizationId, String userId) {
         return dsl.selectFrom(ORGANIZATION_MEMBERS)
                 .where(ORGANIZATION_MEMBERS.ORGANIZATION_ID.eq(organizationId)
