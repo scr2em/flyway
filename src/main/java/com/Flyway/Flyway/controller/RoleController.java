@@ -4,11 +4,14 @@ import com.Flyway.Flyway.dto.request.CreateRoleRequest;
 import com.Flyway.Flyway.dto.request.UpdateRoleRequest;
 import com.Flyway.Flyway.dto.response.ApiResponse;
 import com.Flyway.Flyway.dto.response.RoleResponse;
+import com.Flyway.Flyway.security.CustomUserDetails;
+import com.Flyway.Flyway.security.RequirePermission;
 import com.Flyway.Flyway.service.RoleService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,19 +30,21 @@ public class RoleController {
     }
     
     @GetMapping
+    @RequirePermission("role.view")
+    public ResponseEntity<ApiResponse<List<RoleResponse>>> getRoles(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        List<RoleResponse> roles = roleService.getRolesByOrganizationId(userDetails.getOrganizationId());
+        return ResponseEntity.ok(ApiResponse.success(roles));
+    }
+    
+    @GetMapping("/all")
     public ResponseEntity<ApiResponse<List<RoleResponse>>> getAllRoles() {
         List<RoleResponse> roles = roleService.getAllRoles();
         return ResponseEntity.ok(ApiResponse.success(roles));
     }
     
-    @GetMapping("/organization/{organizationId}")
-    public ResponseEntity<ApiResponse<List<RoleResponse>>> getRolesByOrganizationId(
-            @PathVariable String organizationId) {
-        List<RoleResponse> roles = roleService.getRolesByOrganizationId(organizationId);
-        return ResponseEntity.ok(ApiResponse.success(roles));
-    }
-    
     @PostMapping
+    @RequirePermission("role.create")
     public ResponseEntity<ApiResponse<RoleResponse>> createRole(@Valid @RequestBody CreateRoleRequest request) {
         RoleResponse role = roleService.createRole(request);
         return ResponseEntity.status(HttpStatus.CREATED)

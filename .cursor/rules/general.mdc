@@ -8,3 +8,4 @@ alwaysApply: true
 2. use JOOQ
 3. we use Mysql
 4. we have a docker compose file that runs mysql, mailhog, phpmyadmin
+5. user can only be in 1 organization 

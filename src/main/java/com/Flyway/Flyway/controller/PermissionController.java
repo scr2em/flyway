@@ -2,6 +2,7 @@ package com.Flyway.Flyway.controller;
 
 import com.Flyway.Flyway.dto.response.ApiResponse;
 import com.Flyway.Flyway.dto.response.PermissionResponse;
+import com.Flyway.Flyway.security.RequirePermission;
 import com.Flyway.Flyway.service.PermissionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

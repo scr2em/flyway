@@ -21,6 +21,7 @@ public class CustomUserDetails implements UserDetails {
     private String password;
     private Boolean emailVerified;
     private String userStatusCode;
+    private String organizationId;
     
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

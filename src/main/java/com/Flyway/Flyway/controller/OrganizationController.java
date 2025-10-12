@@ -5,6 +5,7 @@ import com.Flyway.Flyway.dto.request.UpdateOrganizationRequest;
 import com.Flyway.Flyway.dto.response.ApiResponse;
 import com.Flyway.Flyway.dto.response.OrganizationResponse;
 import com.Flyway.Flyway.security.CustomUserDetails;
+import com.Flyway.Flyway.security.RequirePermission;
 import com.Flyway.Flyway.service.OrganizationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,22 +23,17 @@ public class OrganizationController {
     
     private final OrganizationService organizationService;
     
-    @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<OrganizationResponse>> getOrganizationById(@PathVariable String id) {
-        OrganizationResponse organization = organizationService.getOrganizationById(id);
+    @GetMapping
+    @RequirePermission("organization.view")
+    public ResponseEntity<ApiResponse<OrganizationResponse>> getCurrentOrganization(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        OrganizationResponse organization = organizationService.getOrganizationById(userDetails.getOrganizationId());
         return ResponseEntity.ok(ApiResponse.success(organization));
     }
     
-    @GetMapping
+    @GetMapping("/all")
     public ResponseEntity<ApiResponse<List<OrganizationResponse>>> getAllOrganizations() {
         List<OrganizationResponse> organizations = organizationService.getAllOrganizations();
-        return ResponseEntity.ok(ApiResponse.success(organizations));
-    }
-    
-    @GetMapping("/my-organizations")
-    public ResponseEntity<ApiResponse<List<OrganizationResponse>>> getMyOrganizations(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        List<OrganizationResponse> organizations = organizationService.getOrganizationsByCreator(userDetails.getId());
         return ResponseEntity.ok(ApiResponse.success(organizations));
     }
     
@@ -50,17 +46,20 @@ public class OrganizationController {
                 .body(ApiResponse.success("Organization created successfully", organization));
     }
     
-    @PutMapping("/{id}")
+    @PutMapping
+    @RequirePermission("organization.update")
     public ResponseEntity<ApiResponse<OrganizationResponse>> updateOrganization(
-            @PathVariable String id,
-            @Valid @RequestBody UpdateOrganizationRequest request) {
-        OrganizationResponse organization = organizationService.updateOrganization(id, request);
+            @Valid @RequestBody UpdateOrganizationRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        OrganizationResponse organization = organizationService.updateOrganization(userDetails.getOrganizationId(), request);
         return ResponseEntity.ok(ApiResponse.success("Organization updated successfully", organization));
     }
     
-    @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteOrganization(@PathVariable String id) {
-        organizationService.deleteOrganization(id);
+    @DeleteMapping
+    @RequirePermission("organization.delete")
+    public ResponseEntity<ApiResponse<Void>> deleteOrganization(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        organizationService.deleteOrganization(userDetails.getOrganizationId());
         return ResponseEntity.ok(ApiResponse.success("Organization deleted successfully", null));
     }
 }

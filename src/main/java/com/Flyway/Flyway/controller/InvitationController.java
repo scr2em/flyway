@@ -5,6 +5,7 @@ import com.Flyway.Flyway.dto.request.RespondToInvitationRequest;
 import com.Flyway.Flyway.dto.response.ApiResponse;
 import com.Flyway.Flyway.dto.response.InvitationResponse;
 import com.Flyway.Flyway.security.CustomUserDetails;
+import com.Flyway.Flyway.security.RequirePermission;
 import com.Flyway.Flyway.service.InvitationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,10 +35,11 @@ public class InvitationController {
         return ResponseEntity.ok(ApiResponse.success(invitation));
     }
     
-    @GetMapping("/organization/{organizationId}")
-    public ResponseEntity<ApiResponse<List<InvitationResponse>>> getInvitationsByOrganizationId(
-            @PathVariable String organizationId) {
-        List<InvitationResponse> invitations = invitationService.getInvitationsByOrganizationId(organizationId);
+    @GetMapping
+    @RequirePermission("invitation.view")
+    public ResponseEntity<ApiResponse<List<InvitationResponse>>> getInvitationsByOrganization(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        List<InvitationResponse> invitations = invitationService.getInvitationsByOrganizationId(userDetails.getOrganizationId());
         return ResponseEntity.ok(ApiResponse.success(invitations));
     }
     
@@ -49,13 +51,13 @@ public class InvitationController {
         return ResponseEntity.ok(ApiResponse.success(invitations));
     }
     
-    @PostMapping("/organization/{organizationId}")
+    @PostMapping
+    @RequirePermission("invitation.create")
     public ResponseEntity<ApiResponse<InvitationResponse>> createInvitation(
-            @PathVariable String organizationId,
             @Valid @RequestBody CreateInvitationRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         InvitationResponse invitation = invitationService.createInvitation(
-                organizationId, request, userDetails.getId());
+                userDetails.getOrganizationId(), request, userDetails.getId());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Invitation created successfully", invitation));
     }

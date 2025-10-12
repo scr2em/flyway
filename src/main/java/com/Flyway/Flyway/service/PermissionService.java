@@ -2,7 +2,9 @@ package com.Flyway.Flyway.service;
 
 import com.Flyway.Flyway.dto.response.PermissionResponse;
 import com.Flyway.Flyway.exception.ResourceNotFoundException;
+import com.Flyway.Flyway.repository.OrganizationMemberRepository;
 import com.Flyway.Flyway.repository.PermissionRepository;
+import com.Flyway.Flyway.repository.RolePermissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.jooq.Record;
 import org.springframework.stereotype.Service;
@@ -16,6 +18,8 @@ import java.util.stream.Collectors;
 public class PermissionService {
     
     private final PermissionRepository permissionRepository;
+    private final OrganizationMemberRepository organizationMemberRepository;
+    private final RolePermissionRepository rolePermissionRepository;
     
     public PermissionResponse getPermissionById(String id) {
         Record permission = permissionRepository.findById(id)
@@ -40,6 +44,71 @@ public class PermissionService {
     public List<PermissionResponse> getPermissionsByCategory(String category) {
         return permissionRepository.findByCategory(category).stream()
                 .map(this::mapToPermissionResponse)
+                .collect(Collectors.toList());
+    }
+    
+    /**
+     * Check if a user has a specific permission in an organization
+     * 
+     * @param userId The user ID
+     * @param organizationId The organization ID
+     * @param permissionCode The permission code to check
+     * @return true if the user has the permission, false otherwise
+     */
+    public boolean userHasPermission(String userId, String organizationId, String permissionCode) {
+        // First check if user is a member of the organization
+        var memberOptional = organizationMemberRepository.findByOrganizationIdAndUserId(organizationId, userId);
+        
+        if (memberOptional.isEmpty()) {
+            return false;
+        }
+        
+        Record member = memberOptional.get();
+        String roleId = member.get("role_id", String.class);
+        
+        if (roleId == null) {
+            return false;
+        }
+        
+        // Get permission by code
+        var permissionOptional = permissionRepository.findByCode(permissionCode);
+        if (permissionOptional.isEmpty()) {
+            return false;
+        }
+        
+        String permissionId = permissionOptional.get().get("id", String.class);
+        
+        // Check if the role has this permission
+        return rolePermissionRepository.existsByRoleIdAndPermissionId(roleId, permissionId);
+    }
+    
+    /**
+     * Get all permission codes for a user in an organization
+     * 
+     * @param userId The user ID
+     * @param organizationId The organization ID
+     * @return List of permission codes the user has
+     */
+    public List<String> getUserPermissionsInOrganization(String userId, String organizationId) {
+        // First check if user is a member of the organization
+        var memberOptional = organizationMemberRepository.findByOrganizationIdAndUserId(organizationId, userId);
+        
+        if (memberOptional.isEmpty()) {
+            return List.of();
+        }
+        
+        Record member = memberOptional.get();
+        String roleId = member.get("role_id", String.class);
+        
+        if (roleId == null) {
+            return List.of();
+        }
+        
+        // Get all permissions for the role
+        List<Record> rolePermissions = rolePermissionRepository.findByRoleId(roleId);
+        
+        return rolePermissions.stream()
+                .map(record -> record.get("code", String.class))
                 .collect(Collectors.toList());
     }
     
