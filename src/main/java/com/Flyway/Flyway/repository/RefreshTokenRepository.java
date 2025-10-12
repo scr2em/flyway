@@ -28,8 +28,8 @@ public class RefreshTokenRepository {
     
     public Optional<Record> findByTokenHash(String tokenHash) {
         return dsl.selectFrom(table(TABLE))
-                .where(field("token_hash").eq(tokenHash))
-                .where(field("is_revoked").eq(false))
+                .where(field("token_hash").eq(tokenHash)
+                        .and(field("is_revoked").eq(false)))
                 .fetchOptional();
     }
     
@@ -79,8 +79,8 @@ public class RefreshTokenRepository {
         return dsl.update(table(TABLE))
                 .set(field("is_revoked"), true)
                 .set(field("revoked_at"), LocalDateTime.now())
-                .where(field("user_id").eq(userId))
-                .where(field("is_revoked").eq(false))
+                .where(field("user_id").eq(userId)
+                        .and(field("is_revoked").eq(false)))
                 .execute();
     }
     

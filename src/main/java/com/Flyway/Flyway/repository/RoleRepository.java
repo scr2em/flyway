@@ -39,8 +39,8 @@ public class RoleRepository {
     
     public Optional<Record> findByOrganizationIdAndName(String organizationId, String name) {
         return dsl.selectFrom(table(TABLE))
-                .where(field("organization_id").eq(organizationId))
-                .where(field("name").eq(name))
+                .where(field("organization_id").eq(organizationId)
+                        .and(field("name").eq(name)))
                 .fetchOptional();
     }
     
@@ -68,15 +68,15 @@ public class RoleRepository {
         return dsl.update(table(TABLE))
                 .set(field("name"), name)
                 .set(field("updated_at"), LocalDateTime.now())
-                .where(field("id").eq(id))
-                .where(field("is_immutable").eq(false))
+                .where(field("id").eq(id)
+                        .and(field("is_immutable").eq(false)))
                 .execute();
     }
     
     public int delete(String id) {
         return dsl.deleteFrom(table(TABLE))
-                .where(field("id").eq(id))
-                .where(field("is_immutable").eq(false))
+                .where(field("id").eq(id)
+                        .and(field("is_immutable").eq(false)))
                 .execute();
     }
 }

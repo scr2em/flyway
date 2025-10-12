@@ -40,8 +40,8 @@ public class OrganizationMemberRepository {
     
     public Optional<Record> findByOrganizationIdAndUserId(String organizationId, String userId) {
         return dsl.selectFrom(table(TABLE))
-                .where(field("organization_id").eq(organizationId))
-                .where(field("user_id").eq(userId))
+                .where(field("organization_id").eq(organizationId)
+                        .and(field("user_id").eq(userId)))
                 .fetchOptional();
     }
     
@@ -80,8 +80,8 @@ public class OrganizationMemberRepository {
     public boolean existsByOrganizationIdAndUserId(String organizationId, String userId) {
         return dsl.fetchExists(
                 dsl.selectFrom(table(TABLE))
-                        .where(field("organization_id").eq(organizationId))
-                        .where(field("user_id").eq(userId))
+                        .where(field("organization_id").eq(organizationId)
+                                .and(field("user_id").eq(userId)))
         );
     }
 }

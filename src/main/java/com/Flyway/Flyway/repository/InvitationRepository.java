@@ -100,8 +100,8 @@ public class InvitationRepository {
         return dsl.update(table(TABLE))
                 .set(field("invitation_status_id"), expiredStatus.get().get("id"))
                 .set(field("updated_at"), LocalDateTime.now())
-                .where(field("expires_at").lt(LocalDateTime.now()))
-                .where(field("invitation_status_id").eq(pendingStatus.get().get("id")))
+                .where(field("expires_at").lt(LocalDateTime.now())
+                        .and(field("invitation_status_id").eq(pendingStatus.get().get("id"))))
                 .execute();
     }
 }

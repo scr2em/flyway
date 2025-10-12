@@ -52,16 +52,16 @@ public class RolePermissionRepository {
     
     public int deleteByRoleIdAndPermissionId(String roleId, String permissionId) {
         return dsl.deleteFrom(table(TABLE))
-                .where(field("role_id").eq(roleId))
-                .where(field("permission_id").eq(permissionId))
+                .where(field("role_id").eq(roleId)
+                        .and(field("permission_id").eq(permissionId)))
                 .execute();
     }
     
     public boolean existsByRoleIdAndPermissionId(String roleId, String permissionId) {
         return dsl.fetchExists(
                 dsl.selectFrom(table(TABLE))
-                        .where(field("role_id").eq(roleId))
-                        .where(field("permission_id").eq(permissionId))
+                        .where(field("role_id").eq(roleId)
+                                .and(field("permission_id").eq(permissionId)))
         );
     }
 }
