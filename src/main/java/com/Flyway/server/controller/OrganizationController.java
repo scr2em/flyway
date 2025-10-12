@@ -14,8 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/organizations")
 @RequiredArgsConstructor
@@ -30,12 +28,7 @@ public class OrganizationController {
         OrganizationResponse organization = organizationService.getOrganizationById(userDetails.getOrganizationId());
         return ResponseEntity.ok(organization);
     }
-    
-    @GetMapping("/all")
-    public ResponseEntity<List<OrganizationResponse>> getAllOrganizations() {
-        List<OrganizationResponse> organizations = organizationService.getAllOrganizations();
-        return ResponseEntity.ok(organizations);
-    }
+
     
     @PostMapping
     public ResponseEntity<OrganizationResponse> createOrganization(

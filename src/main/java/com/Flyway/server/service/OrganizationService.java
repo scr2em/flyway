@@ -4,6 +4,7 @@ import com.Flyway.server.dto.generated.CreateOrganizationRequest;
 import com.Flyway.server.dto.generated.UpdateOrganizationRequest;
 import com.Flyway.server.dto.generated.OrganizationResponse;
 import com.Flyway.server.jooq.tables.records.OrganizationsRecord;
+import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.OrganizationRepository;
@@ -47,6 +48,12 @@ public class OrganizationService {
     
     @Transactional
     public OrganizationResponse createOrganization(CreateOrganizationRequest request, String createdBy) {
+        // Check if user is already a member of an organization
+        // Rule: users can only be in 1 organization
+        if (!organizationMemberRepository.findByUserId(createdBy).isEmpty()) {
+            throw new ConflictException("You are already a member of an organization. Users can only be in one organization.");
+        }
+        
         // Create organization
         String orgId = organizationRepository.create(request.getName(), createdBy);
         

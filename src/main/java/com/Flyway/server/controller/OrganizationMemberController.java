@@ -26,7 +26,10 @@ public class OrganizationMemberController {
     @GetMapping("/{memberId}")
     @RequirePermission("member.view")
     public ResponseEntity<OrganizationMemberResponse> getMemberById(
-            @PathVariable String memberId) {
+            @PathVariable String memberId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Verify member belongs to user's organization
+        memberService.verifyMemberOwnership(memberId, userDetails.getOrganizationId());
         OrganizationMemberResponse member = memberService.getMemberById(memberId);
         return ResponseEntity.ok(member);
     }
@@ -52,7 +55,10 @@ public class OrganizationMemberController {
     @RequirePermission("member.update_role")
     public ResponseEntity<OrganizationMemberResponse> updateMemberRole(
             @PathVariable String memberId,
-            @Valid @RequestBody UpdateMemberRoleRequest request) {
+            @Valid @RequestBody UpdateMemberRoleRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Verify member belongs to user's organization
+        memberService.verifyMemberOwnership(memberId, userDetails.getOrganizationId());
         OrganizationMemberResponse member = memberService.updateMemberRole(memberId, request);
         return ResponseEntity.ok(member);
     }
@@ -60,7 +66,10 @@ public class OrganizationMemberController {
     @DeleteMapping("/{memberId}")
     @RequirePermission("member.remove")
     public ResponseEntity<Void> removeMember(
-            @PathVariable String memberId) {
+            @PathVariable String memberId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Verify member belongs to user's organization
+        memberService.verifyMemberOwnership(memberId, userDetails.getOrganizationId());
         memberService.removeMember(memberId);
         return ResponseEntity.ok().build();
     }

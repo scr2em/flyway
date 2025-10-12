@@ -7,6 +7,7 @@ import com.Flyway.server.dto.generated.RoleResponse;
 import com.Flyway.server.jooq.tables.records.RolesRecord;
 import com.Flyway.server.exception.BadRequestException;
 import com.Flyway.server.exception.ConflictException;
+import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.PermissionRepository;
 import com.Flyway.server.repository.RolePermissionRepository;
@@ -109,6 +110,15 @@ public class RoleService {
         }
         
         roleRepository.delete(id);
+    }
+    
+    public void verifyRoleOwnership(String roleId, String organizationId) {
+        RolesRecord role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));
+        
+        if (!role.getOrganizationId().equals(organizationId)) {
+            throw new ForbiddenException("You do not have access to this role");
+        }
     }
     
     private void assignPermissionsToRole(String roleId, List<String> permissionIds) {

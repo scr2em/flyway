@@ -24,7 +24,12 @@ public class RoleController {
     private final RoleService roleService;
     
     @GetMapping("/{id}")
-    public ResponseEntity<RoleResponse> getRoleById(@PathVariable String id) {
+    @RequirePermission("role.view")
+    public ResponseEntity<RoleResponse> getRoleById(
+            @PathVariable String id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Verify role belongs to user's organization
+        roleService.verifyRoleOwnership(id, userDetails.getOrganizationId());
         RoleResponse role = roleService.getRoleById(id);
         return ResponseEntity.ok(role);
     }
@@ -37,29 +42,36 @@ public class RoleController {
         return ResponseEntity.ok(roles);
     }
     
-    @GetMapping("/all")
-    public ResponseEntity<List<RoleResponse>> getAllRoles() {
-        List<RoleResponse> roles = roleService.getAllRoles();
-        return ResponseEntity.ok(roles);
-    }
-    
     @PostMapping
     @RequirePermission("role.create")
-    public ResponseEntity<RoleResponse> createRole(@Valid @RequestBody CreateRoleRequest request) {
+    public ResponseEntity<RoleResponse> createRole(
+            @Valid @RequestBody CreateRoleRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Override organizationId from request with authenticated user's organization
+        request.setOrganizationId(userDetails.getOrganizationId());
         RoleResponse role = roleService.createRole(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(role);
     }
     
     @PutMapping("/{id}")
+    @RequirePermission("role.update")
     public ResponseEntity<RoleResponse> updateRole(
             @PathVariable String id,
-            @Valid @RequestBody UpdateRoleRequest request) {
+            @Valid @RequestBody UpdateRoleRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Verify role belongs to user's organization
+        roleService.verifyRoleOwnership(id, userDetails.getOrganizationId());
         RoleResponse role = roleService.updateRole(id, request);
         return ResponseEntity.ok(role);
     }
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRole(@PathVariable String id) {
+    @RequirePermission("role.delete")
+    public ResponseEntity<Void> deleteRole(
+            @PathVariable String id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Verify role belongs to user's organization
+        roleService.verifyRoleOwnership(id, userDetails.getOrganizationId());
         roleService.deleteRole(id);
         return ResponseEntity.ok().build();
     }

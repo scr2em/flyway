@@ -8,6 +8,7 @@ import com.Flyway.server.dto.generated.UserResponse;
 import com.Flyway.server.jooq.tables.records.OrganizationMembersRecord;
 import com.Flyway.server.jooq.tables.records.RolesRecord;
 import com.Flyway.server.exception.ConflictException;
+import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.RoleRepository;
@@ -65,9 +66,10 @@ public class OrganizationMemberService {
             throw new ConflictException("Role does not belong to this organization");
         }
         
-        // Check if user is already a member
-        if (memberRepository.existsByOrganizationIdAndUserId(organizationId, request.getUserId())) {
-            throw new ConflictException("User is already a member of this organization");
+        // Check if user is already in ANY organization (enforce 1 org per user rule)
+        List<?> existingMemberships = memberRepository.findByUserId(request.getUserId());
+        if (!existingMemberships.isEmpty()) {
+            throw new ConflictException("User is already a member of an organization. Users can only be in one organization.");
         }
         
         // Add member
@@ -102,6 +104,15 @@ public class OrganizationMemberService {
                 .orElseThrow(() -> new ResourceNotFoundException("Organization member", "id", memberId));
         
         memberRepository.delete(memberId);
+    }
+    
+    public void verifyMemberOwnership(String memberId, String organizationId) {
+        OrganizationMembersRecord member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization member", "id", memberId));
+        
+        if (!member.getOrganizationId().equals(organizationId)) {
+            throw new ForbiddenException("You do not have access to this member");
+        }
     }
     
     private OrganizationMemberResponse mapToMemberResponse(OrganizationMembersRecord record) {

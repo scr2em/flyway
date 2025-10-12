@@ -14,6 +14,8 @@ import com.Flyway.server.jooq.tables.records.InvitationsRecord;
 import com.Flyway.server.jooq.tables.records.InvitationStatusesRecord;
 import com.Flyway.server.jooq.tables.records.UsersRecord;
 import com.Flyway.server.exception.BadRequestException;
+import com.Flyway.server.exception.ConflictException;
+import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.InvitationRepository;
 import com.Flyway.server.repository.InvitationStatusRepository;
@@ -69,6 +71,24 @@ public class InvitationService {
     
     @Transactional
     public InvitationResponse createInvitation(String organizationId, CreateInvitationRequest request, String invitedBy) {
+        // Check if user with this email already exists and is in an organization
+        userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
+            List<?> memberships = memberRepository.findByUserId(user.getId());
+            if (!memberships.isEmpty()) {
+                throw new ConflictException("User with this email is already a member of an organization");
+            }
+        });
+        
+        // Check if there's already a pending invitation for this email to ANY organization
+        List<InvitationsRecord> existingInvitations = invitationRepository.findByEmail(request.getEmail());
+        for (InvitationsRecord existing : existingInvitations) {
+            String statusId = existing.getInvitationStatusId();
+            InvitationStatusesRecord status = invitationStatusRepository.findById(statusId).orElse(null);
+            if (status != null && "pending".equals(status.getCode())) {
+                throw new ConflictException("User already has a pending invitation to an organization");
+            }
+        }
+        
         // Get pending status
         InvitationStatusesRecord pendingStatus = invitationStatusRepository.findByCode("pending")
                 .orElseThrow(() -> new RuntimeException("Pending status not found"));
@@ -125,13 +145,17 @@ public class InvitationService {
             throw new BadRequestException("User email does not match invitation email");
         }
         
+        // Check if user is already in ANY organization (enforce 1 org per user rule)
+        List<?> existingMemberships = memberRepository.findByUserId(userId);
+        if (!existingMemberships.isEmpty()) {
+            throw new ConflictException("You are already a member of an organization. Users can only be in one organization.");
+        }
+        
         // Add user to organization
         String organizationId = invitation.getOrganizationId();
         String roleId = invitation.getRoleId();
         
-        if (!memberRepository.existsByOrganizationIdAndUserId(organizationId, userId)) {
-            memberRepository.create(organizationId, userId, roleId);
-        }
+        memberRepository.create(organizationId, userId, roleId);
         
         // Update invitation status to accepted
         InvitationStatusesRecord acceptedStatus = invitationStatusRepository.findByCode("accepted")
@@ -162,6 +186,24 @@ public class InvitationService {
                 .orElseThrow(() -> new ResourceNotFoundException("Invitation", "id", id));
         
         invitationRepository.delete(id);
+    }
+    
+    public void verifyInvitationOwnership(String invitationId, String organizationId) {
+        InvitationsRecord invitation = invitationRepository.findById(invitationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Invitation", "id", invitationId));
+        
+        if (!invitation.getOrganizationId().equals(organizationId)) {
+            throw new ForbiddenException("You do not have access to this invitation");
+        }
+    }
+    
+    public void verifyInvitationRecipient(String token, String userEmail) {
+        InvitationsRecord invitation = invitationRepository.findByToken(token)
+                .orElseThrow(() -> new ResourceNotFoundException("Invitation", "token", token));
+        
+        if (!invitation.getEmail().equalsIgnoreCase(userEmail)) {
+            throw new ForbiddenException("This invitation is not addressed to you");
+        }
     }
     
     private InvitationResponse mapToInvitationResponse(InvitationsRecord record) {

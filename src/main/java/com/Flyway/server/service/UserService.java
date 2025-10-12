@@ -8,6 +8,7 @@ import com.Flyway.server.dto.generated.UserStatusEnum;
 import com.Flyway.server.jooq.tables.records.OrganizationMembersRecord;
 import com.Flyway.server.jooq.tables.records.OrganizationsRecord;
 import com.Flyway.server.jooq.tables.records.UsersRecord;
+import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.OrganizationRepository;
@@ -32,6 +33,7 @@ public class UserService {
     private final UserStatusRepository userStatusRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
     private final OrganizationRepository organizationRepository;
+    private final PermissionService permissionService;
     
     public UserResponse getUserById(String id) {
         UsersRecord user = userRepository.findById(id)
@@ -81,6 +83,19 @@ public class UserService {
         
         userRepository.verifyEmail(id);
         return getUserById(id);
+    }
+    
+    public void checkUserPermission(String userId, String organizationId, String permissionCode) {
+        if (organizationId == null) {
+            throw new ForbiddenException("User is not a member of any organization");
+        }
+        
+        boolean hasPermission = permissionService.userHasPermission(userId, organizationId, permissionCode);
+        if (!hasPermission) {
+            throw new ForbiddenException(
+                "You do not have permission to perform this action. Required permission: " + permissionCode
+            );
+        }
     }
     
     private UserResponse mapToUserResponse(UsersRecord record) {

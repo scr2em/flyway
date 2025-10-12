@@ -2,7 +2,9 @@ package com.Flyway.server.controller;
 
 import com.Flyway.server.dto.generated.UpdateUserRequest;
 import com.Flyway.server.dto.generated.UserResponse;
+import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.security.CustomUserDetails;
+import com.Flyway.server.security.RequirePermission;
 import com.Flyway.server.service.UserService;
 
 import jakarta.validation.Valid;
@@ -28,12 +30,20 @@ public class UserController {
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> getUserById(@PathVariable String id) {
+    public ResponseEntity<UserResponse> getUserById(
+            @PathVariable String id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Users can only view themselves unless they have user.view permission
+        if (!id.equals(userDetails.getId())) {
+            // This will throw ForbiddenException if user doesn't have permission
+            userService.checkUserPermission(userDetails.getId(), userDetails.getOrganizationId(), "user.view");
+        }
         UserResponse user = userService.getUserById(id);
         return ResponseEntity.ok(user);
     }
     
     @GetMapping
+    @RequirePermission("user.view")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
@@ -42,18 +52,31 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable String id,
-            @Valid @RequestBody UpdateUserRequest request) {
+            @Valid @RequestBody UpdateUserRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Users can only update themselves unless they have user.update permission
+        if (!id.equals(userDetails.getId())) {
+            userService.checkUserPermission(userDetails.getId(), userDetails.getOrganizationId(), "user.update");
+        }
         UserResponse user = userService.updateUser(id, request);
         return ResponseEntity.ok(user);
     }
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
+    @RequirePermission("user.delete")
+    public ResponseEntity<Void> deleteUser(
+            @PathVariable String id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Prevent self-deletion
+        if (id.equals(userDetails.getId())) {
+            throw new ForbiddenException("You cannot delete your own account");
+        }
         userService.deleteUser(id);
         return ResponseEntity.ok().build();
     }
     
     @PostMapping("/{id}/verify-email")
+    @RequirePermission("user.verify_email")
     public ResponseEntity<UserResponse> verifyEmail(@PathVariable String id) {
         UserResponse user = userService.verifyEmail(id);
         return ResponseEntity.ok(user);
