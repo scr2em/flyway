@@ -2,12 +2,15 @@ package com.Flyway.server.service;
 
 import com.Flyway.server.dto.generated.UpdateUserRequest;
 import com.Flyway.server.dto.generated.UserResponse;
+import com.Flyway.server.dto.generated.UserResponseOrganization;
 import com.Flyway.server.dto.generated.UserStatusResponse;
 import com.Flyway.server.dto.generated.UserStatusEnum;
 import com.Flyway.server.jooq.tables.records.OrganizationMembersRecord;
+import com.Flyway.server.jooq.tables.records.OrganizationsRecord;
 import com.Flyway.server.jooq.tables.records.UsersRecord;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
+import com.Flyway.server.repository.OrganizationRepository;
 import com.Flyway.server.repository.UserRepository;
 import com.Flyway.server.repository.UserStatusRepository;
 import com.Flyway.server.jooq.tables.records.UserStatusesRecord;
@@ -28,6 +31,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserStatusRepository userStatusRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
+    private final OrganizationRepository organizationRepository;
     
     public UserResponse getUserById(String id) {
         UsersRecord user = userRepository.findById(id)
@@ -94,11 +98,18 @@ public class UserService {
                     .status(statusEnum);
         }
         
-        // Get organization ID from organization_members table (user can only be in 1 organization)
-        String organizationId = null;
+        // Get organization from organization_members table (user can only be in 1 organization)
+        UserResponseOrganization organization = null;
         List<OrganizationMembersRecord> orgMembers = organizationMemberRepository.findByUserId(userId);
         if (!orgMembers.isEmpty()) {
-            organizationId = orgMembers.get(0).getOrganizationId();
+            String organizationId = orgMembers.get(0).getOrganizationId();
+            OrganizationsRecord orgRecord = organizationRepository.findById(organizationId).orElse(null);
+            
+            if (orgRecord != null) {
+                organization = new UserResponseOrganization()
+                        .id(orgRecord.getId())
+                        .name(orgRecord.getName());
+            }
         }
         
         // Convert LocalDateTime to OffsetDateTime
@@ -111,7 +122,7 @@ public class UserService {
                 .lastName(record.getLastName())
                 .email(record.getEmail())
                 .status(statusResponse)
-                .organizationId(organizationId)
+                .organization(organization)
                 .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
                 .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null);
     }
