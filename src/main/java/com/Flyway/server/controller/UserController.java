@@ -44,8 +44,10 @@ public class UserController {
     
     @GetMapping
     @RequirePermission("user.view")
-    public ResponseEntity<List<UserResponse>> getAllUsers() {
-        List<UserResponse> users = userService.getAllUsers();
+    public ResponseEntity<List<UserResponse>> getAllUsers(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Only return users from the current user's organization
+        List<UserResponse> users = userService.getUsersByOrganizationId(userDetails.getOrganizationId());
         return ResponseEntity.ok(users);
     }
     
@@ -71,6 +73,8 @@ public class UserController {
         if (id.equals(userDetails.getId())) {
             throw new ForbiddenException("You cannot delete your own account");
         }
+        // Verify target user belongs to same organization
+        userService.verifyUserInOrganization(id, userDetails.getOrganizationId());
         userService.deleteUser(id);
         return ResponseEntity.ok().build();
     }

@@ -55,6 +55,20 @@ public class UserService {
                 .collect(Collectors.toList());
     }
     
+    public List<UserResponse> getUsersByOrganizationId(String organizationId) {
+        // Get all members of the organization
+        List<OrganizationMembersRecord> members = organizationMemberRepository.findByOrganizationId(organizationId);
+        
+        // Map to user responses
+        return members.stream()
+                .map(member -> {
+                    UsersRecord user = userRepository.findById(member.getUserId()).orElse(null);
+                    return user != null ? mapToUserResponse(user) : null;
+                })
+                .filter(userResponse -> userResponse != null)
+                .collect(Collectors.toList());
+    }
+    
     @Transactional
     public UserResponse updateUser(String id, UpdateUserRequest request) {
         // Check if user exists
@@ -101,6 +115,27 @@ public class UserService {
             throw new ForbiddenException(
                 "You do not have permission to perform this action. Required permission: " + permissionCode
             );
+        }
+    }
+    
+    public void verifyUserInOrganization(String userId, String organizationId) {
+        // Verify user exists
+        userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        // Get user's organization membership
+        List<OrganizationMembersRecord> memberships = organizationMemberRepository.findByUserId(userId);
+        
+        if (memberships.isEmpty()) {
+            throw new ForbiddenException("User is not a member of any organization");
+        }
+        
+        // Check if user belongs to the specified organization
+        boolean isInOrganization = memberships.stream()
+                .anyMatch(membership -> membership.getOrganizationId().equals(organizationId));
+        
+        if (!isInOrganization) {
+            throw new ForbiddenException("You do not have access to this user");
         }
     }
     

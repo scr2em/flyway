@@ -11,6 +11,7 @@ import com.Flyway.server.dto.generated.UserResponse;
 import java.time.ZoneOffset;
 
 import com.Flyway.server.jooq.tables.records.InvitationsRecord;
+import com.Flyway.server.jooq.tables.records.RolesRecord;
 import com.Flyway.server.jooq.tables.records.InvitationStatusesRecord;
 import com.Flyway.server.jooq.tables.records.UsersRecord;
 import com.Flyway.server.exception.BadRequestException;
@@ -20,6 +21,7 @@ import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.InvitationRepository;
 import com.Flyway.server.repository.InvitationStatusRepository;
 import com.Flyway.server.repository.OrganizationMemberRepository;
+import com.Flyway.server.repository.RoleRepository;
 import com.Flyway.server.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -42,6 +44,7 @@ public class InvitationService {
     private final OrganizationService organizationService;
     private final RoleService roleService;
     private final UserService userService;
+    private final RoleRepository roleRepository;
     
     public InvitationResponse getInvitationById(String id) {
         InvitationsRecord invitation = invitationRepository.findById(id)
@@ -87,6 +90,14 @@ public class InvitationService {
             if (status != null && "pending".equals(status.getCode())) {
                 throw new ConflictException("User already has a pending invitation to an organization");
             }
+        }
+        
+        // Verify role exists and belongs to the organization
+        RolesRecord role = roleRepository.findById(request.getRoleId())
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", request.getRoleId()));
+        
+        if (!role.getOrganizationId().equals(organizationId)) {
+            throw new ConflictException("Role does not belong to this organization");
         }
         
         // Get pending status
