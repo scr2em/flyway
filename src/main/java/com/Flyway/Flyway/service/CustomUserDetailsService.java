@@ -1,10 +1,11 @@
 package com.Flyway.Flyway.service;
 
+import com.Flyway.Flyway.jooq.tables.records.OrganizationMembersRecord;
+import com.Flyway.Flyway.jooq.tables.records.UsersRecord;
 import com.Flyway.Flyway.repository.OrganizationMemberRepository;
 import com.Flyway.Flyway.repository.UserRepository;
 import com.Flyway.Flyway.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
-import org.jooq.Record;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -21,22 +22,25 @@ public class CustomUserDetailsService implements UserDetailsService {
     
     @Override
     public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
-        Record user = userRepository.findById(userId)
+        UsersRecord user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + userId));
         
         // Get user's organization ID
         String organizationId = null;
-        List<Record> memberships = organizationMemberRepository.findByUserId(userId);
+        List<OrganizationMembersRecord> memberships = organizationMemberRepository.findByUserId(userId);
         if (!memberships.isEmpty()) {
-            organizationId = memberships.get(0).get("organization_id", String.class);
+            organizationId = memberships.get(0).getOrganizationId();
         }
         
+        // email_verified is stored as byte (0 = false, 1 = true)
+        Boolean emailVerified = user.getEmailVerified() != 0;
+        
         return CustomUserDetails.builder()
-                .id(user.get("id", String.class))
-                .email(user.get("email", String.class))
-                .password(user.get("password_hash", String.class))
-                .emailVerified(user.get("email_verified", Boolean.class))
-                .userStatusCode(getUserStatusCode(user.get("user_status_id", String.class)))
+                .id(user.getId())
+                .email(user.getEmail())
+                .password(user.getPasswordHash())
+                .emailVerified(emailVerified)
+                .userStatusCode(getUserStatusCode(user.getUserStatusId()))
                 .organizationId(organizationId)
                 .build();
     }

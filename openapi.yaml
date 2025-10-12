@@ -1,0 +1,703 @@
+openapi: 3.0.0
+info:
+  title: Flyway API
+  description: API for Flyway application
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+components:
+  schemas:
+    # Enums - Define all enums first
+    UserStatusEnum:
+      type: string
+      enum: [active, inactive, pending, suspended]
+      description: User account status
+    
+    InvitationStatusEnum:
+      type: string
+      enum: [pending, accepted, rejected, expired]
+      description: Invitation status
+
+    # Request DTOs
+    UserRegistrationRequest:
+      type: object
+      description: Request to register a new user
+      required:
+        - email
+        - password
+        - firstName
+        - lastName
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+        password:
+          type: string
+          format: password
+          minLength: 8
+          description: User's password (minimum 8 characters)
+        firstName:
+          type: string
+          description: User's first name
+        lastName:
+          type: string
+          description: User's last name
+
+    LoginRequest:
+      type: object
+      description: Request to login
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: User's email address
+        password:
+          type: string
+          format: password
+          description: User's password
+
+    RefreshTokenRequest:
+      type: object
+      description: Request to refresh access token
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: Refresh token
+
+    CreateOrganizationRequest:
+      type: object
+      description: Request to create a new organization
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Organization name
+        description:
+          type: string
+          description: Organization description
+
+    UpdateOrganizationRequest:
+      type: object
+      description: Request to update an organization
+      properties:
+        name:
+          type: string
+          description: Organization name
+        description:
+          type: string
+          description: Organization description
+
+    CreateRoleRequest:
+      type: object
+      description: Request to create a new role
+      required:
+        - name
+        - organizationId
+      properties:
+        name:
+          type: string
+          description: Role name
+        description:
+          type: string
+          description: Role description
+        organizationId:
+          type: string
+          description: Organization ID
+        permissionIds:
+          type: array
+          items:
+            type: string
+          description: List of permission IDs
+
+    UpdateRoleRequest:
+      type: object
+      description: Request to update a role
+      properties:
+        name:
+          type: string
+          description: Role name
+        description:
+          type: string
+          description: Role description
+        permissionIds:
+          type: array
+          items:
+            type: string
+          description: List of permission IDs
+
+    CreateInvitationRequest:
+      type: object
+      description: Request to create an invitation
+      required:
+        - email
+        - organizationId
+        - roleId
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email of the invited user
+        organizationId:
+          type: string
+          description: Organization ID
+        roleId:
+          type: string
+          description: Role ID
+
+    RespondToInvitationRequest:
+      type: object
+      description: Request to respond to an invitation
+      required:
+        - accept
+      properties:
+        accept:
+          type: boolean
+          description: Whether to accept or reject the invitation
+
+    AddOrganizationMemberRequest:
+      type: object
+      description: Request to add a member to an organization
+      required:
+        - userId
+        - roleId
+      properties:
+        userId:
+          type: string
+          description: User ID
+        roleId:
+          type: string
+          description: Role ID
+
+    UpdateMemberRoleRequest:
+      type: object
+      description: Request to update a member's role
+      required:
+        - roleId
+      properties:
+        roleId:
+          type: string
+          description: New role ID
+
+    UpdateUserRequest:
+      type: object
+      description: Request to update user information
+      properties:
+        firstName:
+          type: string
+          description: User's first name
+        lastName:
+          type: string
+          description: User's last name
+        email:
+          type: string
+          format: email
+          description: User's email address
+
+    # Response DTOs
+    UserResponse:
+      type: object
+      description: User information
+      required:
+        - id
+        - email
+        - firstName
+        - lastName
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: User ID
+        email:
+          type: string
+          format: email
+          description: User's email address
+        firstName:
+          type: string
+          description: User's first name
+        lastName:
+          type: string
+          description: User's last name
+        status:
+          $ref: '#/components/schemas/UserStatusResponse'
+        organizationId:
+          type: string
+          nullable: true
+          description: Organization ID (null if user is not in an organization)
+        createdAt:
+          type: string
+          format: date-time
+          description: When the user was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the user was last updated
+
+    UserStatusResponse:
+      type: object
+      description: User status information
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          description: Status ID
+        status:
+          $ref: '#/components/schemas/UserStatusEnum'
+
+    AuthResponse:
+      type: object
+      description: Authentication response
+      required:
+        - accessToken
+        - refreshToken
+        - user
+      properties:
+        accessToken:
+          type: string
+          description: JWT access token
+        refreshToken:
+          type: string
+          description: Refresh token
+        user:
+          $ref: '#/components/schemas/UserResponse'
+
+    RefreshTokenResponse:
+      type: object
+      description: Refresh token response
+      required:
+        - accessToken
+        - refreshToken
+      properties:
+        accessToken:
+          type: string
+          description: New JWT access token
+        refreshToken:
+          type: string
+          description: New refresh token
+
+    OrganizationResponse:
+      type: object
+      description: Organization information
+      required:
+        - id
+        - name
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Organization ID
+        name:
+          type: string
+          description: Organization name
+        description:
+          type: string
+          description: Organization description
+        createdAt:
+          type: string
+          format: date-time
+          description: When the organization was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the organization was last updated
+
+    RoleResponse:
+      type: object
+      description: Role information
+      required:
+        - id
+        - name
+        - organizationId
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Role ID
+        name:
+          type: string
+          description: Role name
+        description:
+          type: string
+          description: Role description
+        organizationId:
+          type: string
+          description: Organization ID
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PermissionResponse'
+          description: List of permissions
+        createdAt:
+          type: string
+          format: date-time
+          description: When the role was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the role was last updated
+
+    PermissionResponse:
+      type: object
+      description: Permission information
+      required:
+        - id
+        - name
+        - resource
+        - action
+      properties:
+        id:
+          type: string
+          description: Permission ID
+        name:
+          type: string
+          description: Permission name
+        description:
+          type: string
+          description: Permission description
+        resource:
+          type: string
+          description: Resource name
+        action:
+          type: string
+          description: Action name
+
+    InvitationResponse:
+      type: object
+      description: Invitation information
+      required:
+        - id
+        - email
+        - organization
+        - role
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Invitation ID
+        email:
+          type: string
+          format: email
+          description: Email of the invited user
+        organization:
+          $ref: '#/components/schemas/OrganizationResponse'
+        role:
+          $ref: '#/components/schemas/RoleResponse'
+        status:
+          $ref: '#/components/schemas/InvitationStatusResponse'
+        invitedBy:
+          $ref: '#/components/schemas/UserResponse'
+        createdAt:
+          type: string
+          format: date-time
+          description: When the invitation was created
+        expiresAt:
+          type: string
+          format: date-time
+          description: When the invitation expires
+
+    InvitationStatusResponse:
+      type: object
+      description: Invitation status information
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          description: Status ID
+        status:
+          $ref: '#/components/schemas/InvitationStatusEnum'
+
+    OrganizationMemberResponse:
+      type: object
+      description: Organization member information
+      required:
+        - id
+        - user
+        - role
+        - joinedAt
+      properties:
+        id:
+          type: string
+          description: Member ID
+        user:
+          $ref: '#/components/schemas/UserResponse'
+        role:
+          $ref: '#/components/schemas/RoleResponse'
+        joinedAt:
+          type: string
+          format: date-time
+          description: When the member joined
+
+    ErrorResponse:
+      type: object
+      description: Error response
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error type
+        message:
+          type: string
+          description: Error message
+        details:
+          type: string
+          description: Error details
+        timestamp:
+          type: string
+          format: date-time
+          description: When the error occurred
+
+  responses:
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    UnauthorizedError:
+      description: Unauthorized access
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    ForbiddenError:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    ConflictError:
+      description: Conflict - resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /auth/register:
+    post:
+      operationId: register
+      summary: Register a new user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistrationRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /auth/login:
+    post:
+      operationId: login
+      summary: Login user
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /auth/refresh:
+    post:
+      operationId: refreshToken
+      summary: Refresh access token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /users/me:
+    get:
+      operationId: getCurrentUser
+      summary: Get current user information
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User information retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    put:
+      operationId: updateCurrentUser
+      summary: Update current user information
+      tags:
+        - Users
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /organizations:
+    post:
+      operationId: createOrganization
+      summary: Create a new organization
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrganizationRequest'
+      responses:
+        '201':
+          description: Organization created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /organizations/{id}:
+    get:
+      operationId: getOrganization
+      summary: Get organization by ID
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Organization retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    
+    put:
+      operationId: updateOrganization
+      summary: Update organization
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOrganizationRequest'
+      responses:
+        '200':
+          description: Organization updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+

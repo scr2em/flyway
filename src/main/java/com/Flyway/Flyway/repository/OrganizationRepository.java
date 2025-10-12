@@ -1,8 +1,8 @@
 package com.Flyway.Flyway.repository;
 
+import com.Flyway.Flyway.jooq.tables.records.OrganizationsRecord;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
-import org.jooq.Record;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.jooq.impl.DSL.*;
+import static com.Flyway.Flyway.jooq.tables.Organizations.ORGANIZATIONS;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,22 +18,20 @@ public class OrganizationRepository {
     
     private final DSLContext dsl;
     
-    private static final String TABLE = "organizations";
-    
-    public Optional<Record> findById(String id) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("id").eq(id))
+    public Optional<OrganizationsRecord> findById(String id) {
+        return dsl.selectFrom(ORGANIZATIONS)
+                .where(ORGANIZATIONS.ID.eq(id))
                 .fetchOptional();
     }
     
-    public List<Record> findAll() {
-        return dsl.selectFrom(table(TABLE))
+    public List<OrganizationsRecord> findAll() {
+        return dsl.selectFrom(ORGANIZATIONS)
                 .fetch();
     }
     
-    public List<Record> findByCreatedBy(String createdBy) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("created_by").eq(createdBy))
+    public List<OrganizationsRecord> findByCreatedBy(String createdBy) {
+        return dsl.selectFrom(ORGANIZATIONS)
+                .where(ORGANIZATIONS.CREATED_BY.eq(createdBy))
                 .fetch();
     }
     
@@ -41,31 +39,28 @@ public class OrganizationRepository {
         String id = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         
-        dsl.insertInto(table(TABLE))
-                .columns(
-                        field("id"),
-                        field("name"),
-                        field("created_by"),
-                        field("created_at"),
-                        field("updated_at")
-                )
-                .values(id, name, createdBy, now, now)
-                .execute();
+        OrganizationsRecord record = dsl.newRecord(ORGANIZATIONS);
+        record.setId(id);
+        record.setName(name);
+        record.setCreatedBy(createdBy);
+        record.setCreatedAt(now);
+        record.setUpdatedAt(now);
+        record.store();
         
         return id;
     }
     
     public int update(String id, String name) {
-        return dsl.update(table(TABLE))
-                .set(field("name"), name)
-                .set(field("updated_at"), LocalDateTime.now())
-                .where(field("id").eq(id))
+        return dsl.update(ORGANIZATIONS)
+                .set(ORGANIZATIONS.NAME, name)
+                .set(ORGANIZATIONS.UPDATED_AT, LocalDateTime.now())
+                .where(ORGANIZATIONS.ID.eq(id))
                 .execute();
     }
     
     public int delete(String id) {
-        return dsl.deleteFrom(table(TABLE))
-                .where(field("id").eq(id))
+        return dsl.deleteFrom(ORGANIZATIONS)
+                .where(ORGANIZATIONS.ID.eq(id))
                 .execute();
     }
 }

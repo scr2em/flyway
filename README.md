@@ -13,6 +13,8 @@ A Spring Boot application for managing live updates for Capacitor apps with comp
 - **Spring Security** for authorization
 - **Lombok** for reducing boilerplate
 - **Docker Compose** for infrastructure
+- **OpenAPI 3.0** for API contract definition
+- **OpenAPI Generator** for auto-generating Java DTOs
 
 ## Architecture
 
@@ -34,14 +36,65 @@ src/main/java/com/Flyway/Flyway/
 ├── config/              # Configuration classes (Security, JWT, Web)
 ├── controller/          # REST API endpoints
 ├── dto/                 # Data Transfer Objects
-│   ├── request/        # Request DTOs
-│   └── response/       # Response DTOs
+│   ├── generated/      # ✅ Auto-generated DTOs from OpenAPI spec (DO NOT EDIT)
+│   ├── request/        # Request DTOs (manual - being migrated)
+│   └── response/       # Response DTOs (manual - being migrated)
 ├── exception/          # Custom exceptions and global error handler
 ├── repository/         # JOOQ repositories
 ├── security/           # Security components (filters, user details)
 ├── service/            # Business logic layer
 └── util/               # Utility classes (JWT)
 ```
+
+## OpenAPI Contract-First Development
+
+This project uses **OpenAPI as the single source of truth** for API contracts. Java DTOs are automatically generated from the `openapi.yaml` specification.
+
+### Why Contract-First?
+✅ **No duplication** - Define schemas once, use everywhere  
+✅ **Type safety** - Frontend TypeScript and backend Java share the same contract  
+✅ **Auto validation** - Bean Validation annotations generated automatically  
+✅ **Always in sync** - Frontend and backend types can't diverge  
+
+### Quick Start
+
+1. **Define/Edit API Contract** in `openapi.yaml`
+   ```yaml
+   components:
+     schemas:
+       CreateUserRequest:
+         type: object
+         required: [email, firstName, lastName]
+         properties:
+           email: { type: string, format: email }
+           firstName: { type: string }
+           lastName: { type: string }
+   ```
+
+2. **Generate Java DTOs**
+   ```bash
+   mvn generate-sources
+   ```
+   
+   This generates DTOs in:  
+   `target/generated-sources/openapi/src/main/java/com/Flyway/Flyway/dto/generated/`
+
+3. **Use Generated DTOs in Controllers**
+   ```java
+   import com.Flyway.Flyway.dto.generated.*;
+   
+   @PostMapping
+   public UserResponse createUser(@Valid @RequestBody CreateUserRequest request) {
+       return userService.createUser(request);
+   }
+   ```
+
+4. **Generate TypeScript Types** (Frontend)
+   ```bash
+   pnpm api:generate
+   ```
+
+📚 **For complete details, see [OPENAPI_WORKFLOW.md](./OPENAPI_WORKFLOW.md)** and [swagger-ts.md](./swagger-ts.md)
 
 ## Setup Instructions
 
@@ -69,15 +122,18 @@ spring.datasource.username=root
 spring.datasource.password=root
 ```
 
-### 4. Generate JOOQ Classes
-After the database is running and tables are created by Flyway:
+### 4. Generate Code (DTOs & JOOQ Classes)
+After the database is running:
 ```bash
 mvn clean install
 ```
 
 This will:
+- Generate Java DTOs from OpenAPI spec (`openapi.yaml`)
 - Run Flyway migrations to create all tables
 - Generate JOOQ classes based on your database schema
+
+**Note:** Generated DTOs will be in `target/generated-sources/openapi/` and JOOQ classes in `target/generated-sources/jooq/`
 
 ### 5. Run the Application
 ```bash

@@ -1,12 +1,13 @@
 package com.Flyway.Flyway.service;
 
-import com.Flyway.Flyway.dto.request.CreateRoleRequest;
-import com.Flyway.Flyway.dto.request.UpdateRoleRequest;
-import com.Flyway.Flyway.dto.response.PermissionResponse;
-import com.Flyway.Flyway.dto.response.RoleResponse;
+import com.Flyway.Flyway.dto.generated.CreateRoleRequest;
+import com.Flyway.Flyway.dto.generated.UpdateRoleRequest;
+import com.Flyway.Flyway.dto.generated.PermissionResponse;
+import com.Flyway.Flyway.dto.generated.RoleResponse;
 import com.Flyway.Flyway.exception.BadRequestException;
 import com.Flyway.Flyway.exception.ConflictException;
 import com.Flyway.Flyway.exception.ResourceNotFoundException;
+import com.Flyway.Flyway.jooq.tables.records.RolesRecord;
 import com.Flyway.Flyway.repository.PermissionRepository;
 import com.Flyway.Flyway.repository.RolePermissionRepository;
 import com.Flyway.Flyway.repository.RoleRepository;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,7 +31,7 @@ public class RoleService {
     private final PermissionRepository permissionRepository;
     
     public RoleResponse getRoleById(String id) {
-        Record role = roleRepository.findById(id)
+        RolesRecord role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", id));
         
         return mapToRoleResponse(role);
@@ -68,11 +70,11 @@ public class RoleService {
     
     @Transactional
     public RoleResponse updateRole(String id, UpdateRoleRequest request) {
-        Record role = roleRepository.findById(id)
+        RolesRecord role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", id));
         
-        // Check if role is immutable
-        if (role.get("is_immutable", Boolean.class)) {
+        // Check if role is immutable (byte 1 = true)
+        if (role.getIsImmutable() != 0) {
             throw new BadRequestException("Cannot update immutable role");
         }
         
@@ -97,11 +99,11 @@ public class RoleService {
     
     @Transactional
     public void deleteRole(String id) {
-        Record role = roleRepository.findById(id)
+        RolesRecord role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", id));
         
-        // Check if role is immutable
-        if (role.get("is_immutable", Boolean.class)) {
+        // Check if role is immutable (byte 1 = true)
+        if (role.getIsImmutable() != 0) {
             throw new BadRequestException("Cannot delete immutable role");
         }
         
@@ -119,22 +121,24 @@ public class RoleService {
         }
     }
     
-    private RoleResponse mapToRoleResponse(Record record) {
-        String roleId = record.get("id", String.class);
+    private RoleResponse mapToRoleResponse(RolesRecord record) {
+        String roleId = record.getId();
         
         // Fetch permissions for this role
         List<PermissionResponse> permissions = getPermissionsForRole(roleId);
         
-        return RoleResponse.builder()
+        // Convert LocalDateTime to OffsetDateTime
+        LocalDateTime createdAtLocal = record.getCreatedAt();
+        LocalDateTime updatedAtLocal = record.getUpdatedAt();
+        
+        return new RoleResponse()
                 .id(roleId)
-                .organizationId(record.get("organization_id", String.class))
-                .name(record.get("name", String.class))
-                .isSystemRole(record.get("is_system_role", Boolean.class))
-                .isImmutable(record.get("is_immutable", Boolean.class))
-                .createdAt(record.get("created_at", LocalDateTime.class))
-                .updatedAt(record.get("updated_at", LocalDateTime.class))
-                .permissions(permissions)
-                .build();
+                .organizationId(record.getOrganizationId())
+                .name(record.getName())
+                .description(null) // Description not stored in database
+                .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
+                .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null)
+                .permissions(permissions);
     }
     
     private List<PermissionResponse> getPermissionsForRole(String roleId) {
@@ -142,14 +146,17 @@ public class RoleService {
         
         List<PermissionResponse> permissions = new ArrayList<>();
         for (Record record : records) {
-            permissions.add(PermissionResponse.builder()
+            String code = record.get("code", String.class);
+            String[] codeParts = code != null ? code.split("\\.", 2) : new String[]{"", ""};
+            String resource = codeParts.length > 0 ? codeParts[0] : "";
+            String action = codeParts.length > 1 ? codeParts[1] : "";
+            
+            permissions.add(new PermissionResponse()
                     .id(record.get("id", String.class))
-                    .code(record.get("code", String.class))
-                    .label(record.get("label", String.class))
+                    .name(record.get("label", String.class))
                     .description(record.get("description", String.class))
-                    .category(record.get("category", String.class))
-                    .createdAt(record.get("created_at", LocalDateTime.class))
-                    .build());
+                    .resource(resource)
+                    .action(action));
         }
         
         return permissions;

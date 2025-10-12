@@ -9,7 +9,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import static org.jooq.impl.DSL.*;
+import static com.Flyway.Flyway.jooq.tables.RolePermissions.ROLE_PERMISSIONS;
+import static com.Flyway.Flyway.jooq.tables.Permissions.PERMISSIONS;
 
 @Repository
 @RequiredArgsConstructor
@@ -17,26 +18,24 @@ public class RolePermissionRepository {
     
     private final DSLContext dsl;
     
-    private static final String TABLE = "role_permissions";
-    
     public List<Record> findByRoleId(String roleId) {
         return dsl.select()
-                .from(table(TABLE))
-                .join(table("permissions"))
-                .on(field(TABLE + ".permission_id").eq(field("permissions.id")))
-                .where(field(TABLE + ".role_id").eq(roleId))
+                .from(ROLE_PERMISSIONS)
+                .join(PERMISSIONS)
+                .on(ROLE_PERMISSIONS.PERMISSION_ID.eq(PERMISSIONS.ID))
+                .where(ROLE_PERMISSIONS.ROLE_ID.eq(roleId))
                 .fetch();
     }
     
     public String create(String roleId, String permissionId) {
         String id = UUID.randomUUID().toString();
         
-        dsl.insertInto(table(TABLE))
+        dsl.insertInto(ROLE_PERMISSIONS)
                 .columns(
-                        field("id"),
-                        field("role_id"),
-                        field("permission_id"),
-                        field("created_at")
+                        ROLE_PERMISSIONS.ID,
+                        ROLE_PERMISSIONS.ROLE_ID,
+                        ROLE_PERMISSIONS.PERMISSION_ID,
+                        ROLE_PERMISSIONS.CREATED_AT
                 )
                 .values(id, roleId, permissionId, LocalDateTime.now())
                 .execute();
@@ -45,23 +44,23 @@ public class RolePermissionRepository {
     }
     
     public int deleteByRoleId(String roleId) {
-        return dsl.deleteFrom(table(TABLE))
-                .where(field("role_id").eq(roleId))
+        return dsl.deleteFrom(ROLE_PERMISSIONS)
+                .where(ROLE_PERMISSIONS.ROLE_ID.eq(roleId))
                 .execute();
     }
     
     public int deleteByRoleIdAndPermissionId(String roleId, String permissionId) {
-        return dsl.deleteFrom(table(TABLE))
-                .where(field("role_id").eq(roleId)
-                        .and(field("permission_id").eq(permissionId)))
+        return dsl.deleteFrom(ROLE_PERMISSIONS)
+                .where(ROLE_PERMISSIONS.ROLE_ID.eq(roleId)
+                        .and(ROLE_PERMISSIONS.PERMISSION_ID.eq(permissionId)))
                 .execute();
     }
     
     public boolean existsByRoleIdAndPermissionId(String roleId, String permissionId) {
         return dsl.fetchExists(
-                dsl.selectFrom(table(TABLE))
-                        .where(field("role_id").eq(roleId)
-                                .and(field("permission_id").eq(permissionId)))
+                dsl.selectFrom(ROLE_PERMISSIONS)
+                        .where(ROLE_PERMISSIONS.ROLE_ID.eq(roleId)
+                                .and(ROLE_PERMISSIONS.PERMISSION_ID.eq(permissionId)))
         );
     }
 }

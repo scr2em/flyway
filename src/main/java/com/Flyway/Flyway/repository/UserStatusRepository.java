@@ -1,14 +1,14 @@
 package com.Flyway.Flyway.repository;
 
+import com.Flyway.Flyway.jooq.tables.records.UserStatusesRecord;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
-import org.jooq.Record;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-import static org.jooq.impl.DSL.*;
+import static com.Flyway.Flyway.jooq.tables.UserStatuses.USER_STATUSES;
 
 @Repository
 @RequiredArgsConstructor
@@ -16,22 +16,20 @@ public class UserStatusRepository {
     
     private final DSLContext dsl;
     
-    private static final String TABLE = "user_statuses";
-    
-    public Optional<Record> findById(String id) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("id").eq(id))
+    public Optional<UserStatusesRecord> findById(String id) {
+        return dsl.selectFrom(USER_STATUSES)
+                .where(USER_STATUSES.ID.eq(id))
                 .fetchOptional();
     }
     
-    public Optional<Record> findByCode(String code) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("code").eq(code))
+    public Optional<UserStatusesRecord> findByCode(String code) {
+        return dsl.selectFrom(USER_STATUSES)
+                .where(USER_STATUSES.CODE.eq(code))
                 .fetchOptional();
     }
     
-    public List<Record> findAll() {
-        return dsl.selectFrom(table(TABLE))
+    public List<UserStatusesRecord> findAll() {
+        return dsl.selectFrom(USER_STATUSES)
                 .fetch();
     }
 }

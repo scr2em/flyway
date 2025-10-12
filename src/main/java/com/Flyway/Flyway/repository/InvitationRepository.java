@@ -1,8 +1,9 @@
 package com.Flyway.Flyway.repository;
 
+import com.Flyway.Flyway.jooq.tables.records.InvitationsRecord;
+import com.Flyway.Flyway.jooq.tables.records.InvitationStatusesRecord;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
-import org.jooq.Record;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -10,7 +11,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.jooq.impl.DSL.*;
+import static com.Flyway.Flyway.jooq.tables.Invitations.INVITATIONS;
+import static com.Flyway.Flyway.jooq.tables.InvitationStatuses.INVITATION_STATUSES;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,29 +20,27 @@ public class InvitationRepository {
     
     private final DSLContext dsl;
     
-    private static final String TABLE = "invitations";
-    
-    public Optional<Record> findById(String id) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("id").eq(id))
+    public Optional<InvitationsRecord> findById(String id) {
+        return dsl.selectFrom(INVITATIONS)
+                .where(INVITATIONS.ID.eq(id))
                 .fetchOptional();
     }
     
-    public Optional<Record> findByToken(String token) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("token").eq(token))
+    public Optional<InvitationsRecord> findByToken(String token) {
+        return dsl.selectFrom(INVITATIONS)
+                .where(INVITATIONS.TOKEN.eq(token))
                 .fetchOptional();
     }
     
-    public List<Record> findByOrganizationId(String organizationId) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("organization_id").eq(organizationId))
+    public List<InvitationsRecord> findByOrganizationId(String organizationId) {
+        return dsl.selectFrom(INVITATIONS)
+                .where(INVITATIONS.ORGANIZATION_ID.eq(organizationId))
                 .fetch();
     }
     
-    public List<Record> findByEmail(String email) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("email").eq(email))
+    public List<InvitationsRecord> findByEmail(String email) {
+        return dsl.selectFrom(INVITATIONS)
+                .where(INVITATIONS.EMAIL.eq(email))
                 .fetch();
     }
     
@@ -49,59 +49,56 @@ public class InvitationRepository {
         String id = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         
-        dsl.insertInto(table(TABLE))
-                .columns(
-                        field("id"),
-                        field("organization_id"),
-                        field("email"),
-                        field("role_id"),
-                        field("invited_by"),
-                        field("invitation_status_id"),
-                        field("token"),
-                        field("expires_at"),
-                        field("created_at"),
-                        field("updated_at")
-                )
-                .values(id, organizationId, email, roleId, invitedBy, invitationStatusId, token, expiresAt, now, now)
-                .execute();
+        InvitationsRecord record = dsl.newRecord(INVITATIONS);
+        record.setId(id);
+        record.setOrganizationId(organizationId);
+        record.setEmail(email);
+        record.setRoleId(roleId);
+        record.setInvitedBy(invitedBy);
+        record.setInvitationStatusId(invitationStatusId);
+        record.setToken(token);
+        record.setExpiresAt(expiresAt);
+        record.setCreatedAt(now);
+        record.setUpdatedAt(now);
+        record.store();
         
         return id;
     }
     
     public int updateStatus(String id, String statusId) {
-        return dsl.update(table(TABLE))
-                .set(field("invitation_status_id"), statusId)
-                .set(field("responded_at"), LocalDateTime.now())
-                .set(field("updated_at"), LocalDateTime.now())
-                .where(field("id").eq(id))
+        return dsl.update(INVITATIONS)
+                .set(INVITATIONS.INVITATION_STATUS_ID, statusId)
+                .set(INVITATIONS.RESPONDED_AT, LocalDateTime.now())
+                .set(INVITATIONS.UPDATED_AT, LocalDateTime.now())
+                .where(INVITATIONS.ID.eq(id))
                 .execute();
     }
     
     public int delete(String id) {
-        return dsl.deleteFrom(table(TABLE))
-                .where(field("id").eq(id))
+        return dsl.deleteFrom(INVITATIONS)
+                .where(INVITATIONS.ID.eq(id))
                 .execute();
     }
     
     public int markExpired() {
         // Get pending status ID first
-        Optional<Record> pendingStatus = dsl.selectFrom(table("invitation_statuses"))
-                .where(field("code").eq("pending"))
+        Optional<InvitationStatusesRecord> pendingStatus = dsl.selectFrom(INVITATION_STATUSES)
+                .where(INVITATION_STATUSES.CODE.eq("pending"))
                 .fetchOptional();
         
-        Optional<Record> expiredStatus = dsl.selectFrom(table("invitation_statuses"))
-                .where(field("code").eq("expired"))
+        Optional<InvitationStatusesRecord> expiredStatus = dsl.selectFrom(INVITATION_STATUSES)
+                .where(INVITATION_STATUSES.CODE.eq("expired"))
                 .fetchOptional();
         
         if (pendingStatus.isEmpty() || expiredStatus.isEmpty()) {
             return 0;
         }
         
-        return dsl.update(table(TABLE))
-                .set(field("invitation_status_id"), expiredStatus.get().get("id"))
-                .set(field("updated_at"), LocalDateTime.now())
-                .where(field("expires_at").lt(LocalDateTime.now())
-                        .and(field("invitation_status_id").eq(pendingStatus.get().get("id"))))
+        return dsl.update(INVITATIONS)
+                .set(INVITATIONS.INVITATION_STATUS_ID, expiredStatus.get().getId())
+                .set(INVITATIONS.UPDATED_AT, LocalDateTime.now())
+                .where(INVITATIONS.EXPIRES_AT.lt(LocalDateTime.now())
+                        .and(INVITATIONS.INVITATION_STATUS_ID.eq(pendingStatus.get().getId())))
                 .execute();
     }
 }

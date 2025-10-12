@@ -1,19 +1,21 @@
 package com.Flyway.Flyway.service;
 
-import com.Flyway.Flyway.dto.request.LoginRequest;
-import com.Flyway.Flyway.dto.request.RefreshTokenRequest;
-import com.Flyway.Flyway.dto.request.UserRegistrationRequest;
-import com.Flyway.Flyway.dto.response.AuthResponse;
-import com.Flyway.Flyway.dto.response.UserResponse;
+import com.Flyway.Flyway.dto.generated.LoginRequest;
+import com.Flyway.Flyway.dto.generated.RefreshTokenRequest;
+import com.Flyway.Flyway.dto.generated.UserRegistrationRequest;
+import com.Flyway.Flyway.dto.generated.AuthResponse;
+import com.Flyway.Flyway.dto.generated.UserResponse;
 import com.Flyway.Flyway.exception.ConflictException;
 import com.Flyway.Flyway.exception.UnauthorizedException;
+import com.Flyway.Flyway.jooq.tables.records.RefreshTokensRecord;
+import com.Flyway.Flyway.jooq.tables.records.UsersRecord;
+import com.Flyway.Flyway.jooq.tables.records.UserStatusesRecord;
 import com.Flyway.Flyway.repository.RefreshTokenRepository;
 import com.Flyway.Flyway.repository.UserRepository;
 import com.Flyway.Flyway.repository.UserStatusRepository;
 import com.Flyway.Flyway.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.jooq.Record;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +44,7 @@ public class AuthService {
         }
         
         // Get active status
-        Record activeStatus = userStatusRepository.findByCode("active")
+        UserStatusesRecord activeStatus = userStatusRepository.findByCode("active")
                 .orElseThrow(() -> new RuntimeException("Active status not found"));
         
         // Create user
@@ -51,7 +53,7 @@ public class AuthService {
                 request.getLastName(),
                 request.getEmail(),
                 passwordEncoder.encode(request.getPassword()),
-                activeStatus.get("id", String.class)
+                activeStatus.getId()
         );
         
         // Generate tokens
@@ -64,23 +66,20 @@ public class AuthService {
         // Get user details
         UserResponse user = userService.getUserById(userId);
         
-        return AuthResponse.builder()
+        return new AuthResponse()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .expiresIn(86400000L)
-                .user(user)
-                .build();
+                .user(user);
     }
     
     @Transactional
     public AuthResponse login(LoginRequest request, HttpServletRequest httpRequest) {
         // Find user by email
-        Record userRecord = userRepository.findByEmail(request.getEmail())
+        UsersRecord userRecord = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new UnauthorizedException("Invalid credentials"));
         
-        String userId = userRecord.get("id", String.class);
-        String passwordHash = userRecord.get("password_hash", String.class);
+        String userId = userRecord.getId();
+        String passwordHash = userRecord.getPasswordHash();
         
         // Verify password
         if (!passwordEncoder.matches(request.getPassword(), passwordHash)) {
@@ -102,13 +101,10 @@ public class AuthService {
         // Get user details
         UserResponse user = userService.getUserById(userId);
         
-        return AuthResponse.builder()
+        return new AuthResponse()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .expiresIn(86400000L)
-                .user(user)
-                .build();
+                .user(user);
     }
     
     @Transactional
@@ -125,11 +121,11 @@ public class AuthService {
         
         // Hash and verify token exists in database
         String tokenHash = hashToken(refreshToken);
-        Record tokenRecord = refreshTokenRepository.findByTokenHash(tokenHash)
+        RefreshTokensRecord tokenRecord = refreshTokenRepository.findByTokenHash(tokenHash)
                 .orElseThrow(() -> new UnauthorizedException("Refresh token not found"));
         
-        // Check if revoked
-        if (tokenRecord.get("is_revoked", Boolean.class)) {
+        // Check if revoked (byte 1 = true)
+        if (tokenRecord.getIsRevoked() != 0) {
             throw new UnauthorizedException("Refresh token has been revoked");
         }
         
@@ -139,13 +135,10 @@ public class AuthService {
         // Get user details
         UserResponse user = userService.getUserById(userId);
         
-        return AuthResponse.builder()
+        return new AuthResponse()
                 .accessToken(newAccessToken)
                 .refreshToken(refreshToken)
-                .tokenType("Bearer")
-                .expiresIn(86400000L)
-                .user(user)
-                .build();
+                .user(user);
     }
     
     @Transactional

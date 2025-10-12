@@ -1,8 +1,8 @@
 package com.Flyway.Flyway.repository;
 
+import com.Flyway.Flyway.jooq.tables.records.RefreshTokensRecord;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
-import org.jooq.Record;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.jooq.impl.DSL.*;
+import static com.Flyway.Flyway.jooq.tables.RefreshTokens.REFRESH_TOKENS;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,75 +18,70 @@ public class RefreshTokenRepository {
     
     private final DSLContext dsl;
     
-    private static final String TABLE = "refresh_tokens";
-    
-    public Optional<Record> findById(String id) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("id").eq(id))
+    public Optional<RefreshTokensRecord> findById(String id) {
+        return dsl.selectFrom(REFRESH_TOKENS)
+                .where(REFRESH_TOKENS.ID.eq(id))
                 .fetchOptional();
     }
     
-    public Optional<Record> findByTokenHash(String tokenHash) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("token_hash").eq(tokenHash)
-                        .and(field("is_revoked").eq(false)))
+    public Optional<RefreshTokensRecord> findByTokenHash(String tokenHash) {
+        return dsl.selectFrom(REFRESH_TOKENS)
+                .where(REFRESH_TOKENS.TOKEN_HASH.eq(tokenHash)
+                        .and(REFRESH_TOKENS.IS_REVOKED.eq((byte) 0)))
                 .fetchOptional();
     }
     
-    public List<Record> findByUserId(String userId) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("user_id").eq(userId))
+    public List<RefreshTokensRecord> findByUserId(String userId) {
+        return dsl.selectFrom(REFRESH_TOKENS)
+                .where(REFRESH_TOKENS.USER_ID.eq(userId))
                 .fetch();
     }
     
     public String create(String userId, String tokenHash, LocalDateTime expiresAt, String deviceInfo, String ipAddress) {
         String id = UUID.randomUUID().toString();
         
-        dsl.insertInto(table(TABLE))
-                .columns(
-                        field("id"),
-                        field("user_id"),
-                        field("token_hash"),
-                        field("is_revoked"),
-                        field("device_info"),
-                        field("ip_address"),
-                        field("expires_at"),
-                        field("created_at")
-                )
-                .values(id, userId, tokenHash, false, deviceInfo, ipAddress, expiresAt, LocalDateTime.now())
-                .execute();
+        RefreshTokensRecord record = dsl.newRecord(REFRESH_TOKENS);
+        record.setId(id);
+        record.setUserId(userId);
+        record.setTokenHash(tokenHash);
+        record.setIsRevoked((byte) 0); // false
+        record.setDeviceInfo(deviceInfo);
+        record.setIpAddress(ipAddress);
+        record.setExpiresAt(expiresAt);
+        record.setCreatedAt(LocalDateTime.now());
+        record.store();
         
         return id;
     }
     
     public int revoke(String id) {
-        return dsl.update(table(TABLE))
-                .set(field("is_revoked"), true)
-                .set(field("revoked_at"), LocalDateTime.now())
-                .where(field("id").eq(id))
+        return dsl.update(REFRESH_TOKENS)
+                .set(REFRESH_TOKENS.IS_REVOKED, (byte) 1) // true
+                .set(REFRESH_TOKENS.REVOKED_AT, LocalDateTime.now())
+                .where(REFRESH_TOKENS.ID.eq(id))
                 .execute();
     }
     
     public int revokeByTokenHash(String tokenHash) {
-        return dsl.update(table(TABLE))
-                .set(field("is_revoked"), true)
-                .set(field("revoked_at"), LocalDateTime.now())
-                .where(field("token_hash").eq(tokenHash))
+        return dsl.update(REFRESH_TOKENS)
+                .set(REFRESH_TOKENS.IS_REVOKED, (byte) 1) // true
+                .set(REFRESH_TOKENS.REVOKED_AT, LocalDateTime.now())
+                .where(REFRESH_TOKENS.TOKEN_HASH.eq(tokenHash))
                 .execute();
     }
     
     public int revokeAllByUserId(String userId) {
-        return dsl.update(table(TABLE))
-                .set(field("is_revoked"), true)
-                .set(field("revoked_at"), LocalDateTime.now())
-                .where(field("user_id").eq(userId)
-                        .and(field("is_revoked").eq(false)))
+        return dsl.update(REFRESH_TOKENS)
+                .set(REFRESH_TOKENS.IS_REVOKED, (byte) 1) // true
+                .set(REFRESH_TOKENS.REVOKED_AT, LocalDateTime.now())
+                .where(REFRESH_TOKENS.USER_ID.eq(userId)
+                        .and(REFRESH_TOKENS.IS_REVOKED.eq((byte) 0)))
                 .execute();
     }
     
     public int deleteExpiredTokens() {
-        return dsl.deleteFrom(table(TABLE))
-                .where(field("expires_at").lt(LocalDateTime.now()))
+        return dsl.deleteFrom(REFRESH_TOKENS)
+                .where(REFRESH_TOKENS.EXPIRES_AT.lt(LocalDateTime.now()))
                 .execute();
     }
 }

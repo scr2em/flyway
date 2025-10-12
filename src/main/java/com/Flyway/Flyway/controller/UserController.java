@@ -1,8 +1,7 @@
 package com.Flyway.Flyway.controller;
 
-import com.Flyway.Flyway.dto.request.UpdateUserRequest;
-import com.Flyway.Flyway.dto.response.ApiResponse;
-import com.Flyway.Flyway.dto.response.UserResponse;
+import com.Flyway.Flyway.dto.generated.UpdateUserRequest;
+import com.Flyway.Flyway.dto.generated.UserResponse;
 import com.Flyway.Flyway.security.CustomUserDetails;
 import com.Flyway.Flyway.service.UserService;
 import jakarta.validation.Valid;
@@ -21,42 +20,42 @@ public class UserController {
     private final UserService userService;
     
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<UserResponse>> getCurrentUser(
+    public ResponseEntity<UserResponse> getCurrentUser(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         UserResponse user = userService.getUserById(userDetails.getId());
-        return ResponseEntity.ok(ApiResponse.success(user));
+        return ResponseEntity.ok(user);
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserResponse>> getUserById(@PathVariable String id) {
+    public ResponseEntity<UserResponse> getUserById(@PathVariable String id) {
         UserResponse user = userService.getUserById(id);
-        return ResponseEntity.ok(ApiResponse.success(user));
+        return ResponseEntity.ok(user);
     }
     
     @GetMapping
-    public ResponseEntity<ApiResponse<List<UserResponse>>> getAllUsers() {
+    public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> users = userService.getAllUsers();
-        return ResponseEntity.ok(ApiResponse.success(users));
+        return ResponseEntity.ok(users);
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<UserResponse>> updateUser(
+    public ResponseEntity<UserResponse> updateUser(
             @PathVariable String id,
             @Valid @RequestBody UpdateUserRequest request) {
         UserResponse user = userService.updateUser(id, request);
-        return ResponseEntity.ok(ApiResponse.success("User updated successfully", user));
+        return ResponseEntity.ok(user);
     }
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable String id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         userService.deleteUser(id);
-        return ResponseEntity.ok(ApiResponse.success("User deleted successfully", null));
+        return ResponseEntity.ok().build();
     }
     
     @PostMapping("/{id}/verify-email")
-    public ResponseEntity<ApiResponse<UserResponse>> verifyEmail(@PathVariable String id) {
+    public ResponseEntity<UserResponse> verifyEmail(@PathVariable String id) {
         UserResponse user = userService.verifyEmail(id);
-        return ResponseEntity.ok(ApiResponse.success("Email verified successfully", user));
+        return ResponseEntity.ok(user);
     }
 }
 

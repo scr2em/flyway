@@ -1,9 +1,8 @@
 package com.Flyway.Flyway.controller;
 
-import com.Flyway.Flyway.dto.request.CreateRoleRequest;
-import com.Flyway.Flyway.dto.request.UpdateRoleRequest;
-import com.Flyway.Flyway.dto.response.ApiResponse;
-import com.Flyway.Flyway.dto.response.RoleResponse;
+import com.Flyway.Flyway.dto.generated.CreateRoleRequest;
+import com.Flyway.Flyway.dto.generated.UpdateRoleRequest;
+import com.Flyway.Flyway.dto.generated.RoleResponse;
 import com.Flyway.Flyway.security.CustomUserDetails;
 import com.Flyway.Flyway.security.RequirePermission;
 import com.Flyway.Flyway.service.RoleService;
@@ -24,45 +23,44 @@ public class RoleController {
     private final RoleService roleService;
     
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<RoleResponse>> getRoleById(@PathVariable String id) {
+    public ResponseEntity<RoleResponse> getRoleById(@PathVariable String id) {
         RoleResponse role = roleService.getRoleById(id);
-        return ResponseEntity.ok(ApiResponse.success(role));
+        return ResponseEntity.ok(role);
     }
     
     @GetMapping
     @RequirePermission("role.view")
-    public ResponseEntity<ApiResponse<List<RoleResponse>>> getRoles(
+    public ResponseEntity<List<RoleResponse>> getRoles(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         List<RoleResponse> roles = roleService.getRolesByOrganizationId(userDetails.getOrganizationId());
-        return ResponseEntity.ok(ApiResponse.success(roles));
+        return ResponseEntity.ok(roles);
     }
     
     @GetMapping("/all")
-    public ResponseEntity<ApiResponse<List<RoleResponse>>> getAllRoles() {
+    public ResponseEntity<List<RoleResponse>> getAllRoles() {
         List<RoleResponse> roles = roleService.getAllRoles();
-        return ResponseEntity.ok(ApiResponse.success(roles));
+        return ResponseEntity.ok(roles);
     }
     
     @PostMapping
     @RequirePermission("role.create")
-    public ResponseEntity<ApiResponse<RoleResponse>> createRole(@Valid @RequestBody CreateRoleRequest request) {
+    public ResponseEntity<RoleResponse> createRole(@Valid @RequestBody CreateRoleRequest request) {
         RoleResponse role = roleService.createRole(request);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Role created successfully", role));
+        return ResponseEntity.status(HttpStatus.CREATED).body(role);
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<ApiResponse<RoleResponse>> updateRole(
+    public ResponseEntity<RoleResponse> updateRole(
             @PathVariable String id,
             @Valid @RequestBody UpdateRoleRequest request) {
         RoleResponse role = roleService.updateRole(id, request);
-        return ResponseEntity.ok(ApiResponse.success("Role updated successfully", role));
+        return ResponseEntity.ok(role);
     }
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteRole(@PathVariable String id) {
+    public ResponseEntity<Void> deleteRole(@PathVariable String id) {
         roleService.deleteRole(id);
-        return ResponseEntity.ok(ApiResponse.success("Role deleted successfully", null));
+        return ResponseEntity.ok().build();
     }
 }
 

@@ -27,7 +27,7 @@
 		<url/>
 	</scm>
 	<properties>
-		<java.version>25</java.version>
+		<java.version>21</java.version>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -54,6 +54,17 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-aop</artifactId>
 		<version>4.0.0-SNAPSHOT</version>
+	</dependency>
+	<!-- OpenAPI Generator dependencies -->
+	<dependency>
+		<groupId>org.openapitools</groupId>
+		<artifactId>jackson-databind-nullable</artifactId>
+		<version>0.2.6</version>
+	</dependency>
+	<dependency>
+		<groupId>io.swagger.core.v3</groupId>
+		<artifactId>swagger-annotations</artifactId>
+		<version>2.2.20</version>
 	</dependency>
 	<dependency>
 		<groupId>org.flywaydb</groupId>
@@ -121,6 +132,49 @@
 						</path>
 					</annotationProcessorPaths>
 				</configuration>
+			</plugin>
+			<!-- OpenAPI Generator Plugin - Generates Java DTOs from OpenAPI spec -->
+			<plugin>
+				<groupId>org.openapitools</groupId>
+				<artifactId>openapi-generator-maven-plugin</artifactId>
+				<version>7.2.0</version>
+				<executions>
+					<execution>
+						<id>generate-api-models</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+						<configuration>
+							<inputSpec>${project.basedir}/openapi.yaml</inputSpec>
+							<generatorName>spring</generatorName>
+							<output>${project.build.directory}/generated-sources/openapi</output>
+							<apiPackage>com.Flyway.Flyway.api</apiPackage>
+							<modelPackage>com.Flyway.Flyway.dto.generated</modelPackage>
+							<generateApis>false</generateApis>
+							<generateModels>true</generateModels>
+							<generateSupportingFiles>false</generateSupportingFiles>
+							<generateModelTests>false</generateModelTests>
+							<generateModelDocumentation>true</generateModelDocumentation>
+							<additionalProperties>
+								<additionalProperty>useLombok=false</additionalProperty>
+								<additionalProperty>openApiNullable=false</additionalProperty>
+								<additionalProperty>jacksonDatabindNullable=false</additionalProperty>
+							</additionalProperties>
+							<configOptions>
+								<useJakartaEe>true</useJakartaEe>
+								<useBeanValidation>true</useBeanValidation>
+								<performBeanValidation>true</performBeanValidation>
+								<useOptional>false</useOptional>
+								<dateLibrary>java8</dateLibrary>
+								<java8>true</java8>
+								<interfaceOnly>false</interfaceOnly>
+								<skipDefaultInterface>true</skipDefaultInterface>
+								<containerDefaultToNull>true</containerDefaultToNull>
+							</configOptions>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
@@ -203,6 +257,27 @@
 						<version>8.3.0</version>
 					</dependency>
 				</dependencies>
+			</plugin>
+			<!-- Build Helper Maven Plugin - Adds generated sources to the build path -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<version>3.5.0</version>
+				<executions>
+					<execution>
+						<id>add-source</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>add-source</goal>
+						</goals>
+						<configuration>
+							<sources>
+								<source>${project.build.directory}/generated-sources/openapi/src/main/java</source>
+								<source>${project.build.directory}/generated-sources/jooq</source>
+							</sources>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

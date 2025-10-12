@@ -1,8 +1,8 @@
 package com.Flyway.Flyway.repository;
 
+import com.Flyway.Flyway.jooq.tables.records.UsersRecord;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
-import org.jooq.Record;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.jooq.impl.DSL.*;
+import static com.Flyway.Flyway.jooq.tables.Users.USERS;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,22 +18,20 @@ public class UserRepository {
     
     private final DSLContext dsl;
     
-    private static final String TABLE = "users";
-    
-    public Optional<Record> findById(String id) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("id").eq(id))
+    public Optional<UsersRecord> findById(String id) {
+        return dsl.selectFrom(USERS)
+                .where(USERS.ID.eq(id))
                 .fetchOptional();
     }
     
-    public Optional<Record> findByEmail(String email) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("email").eq(email))
+    public Optional<UsersRecord> findByEmail(String email) {
+        return dsl.selectFrom(USERS)
+                .where(USERS.EMAIL.eq(email))
                 .fetchOptional();
     }
     
-    public List<Record> findAll() {
-        return dsl.selectFrom(table(TABLE))
+    public List<UsersRecord> findAll() {
+        return dsl.selectFrom(USERS)
                 .fetch();
     }
     
@@ -41,60 +39,57 @@ public class UserRepository {
         String id = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         
-        dsl.insertInto(table(TABLE))
-                .columns(
-                        field("id"),
-                        field("first_name"),
-                        field("last_name"),
-                        field("email"),
-                        field("password_hash"),
-                        field("user_status_id"),
-                        field("email_verified"),
-                        field("created_at"),
-                        field("updated_at")
-                )
-                .values(id, firstName, lastName, email, passwordHash, userStatusId, false, now, now)
-                .execute();
+        UsersRecord record = dsl.newRecord(USERS);
+        record.setId(id);
+        record.setFirstName(firstName);
+        record.setLastName(lastName);
+        record.setEmail(email);
+        record.setPasswordHash(passwordHash);
+        record.setUserStatusId(userStatusId);
+        record.setEmailVerified((byte) 0); // false
+        record.setCreatedAt(now);
+        record.setUpdatedAt(now);
+        record.store();
         
         return id;
     }
     
     public int update(String id, String firstName, String lastName) {
-        return dsl.update(table(TABLE))
-                .set(field("first_name"), firstName)
-                .set(field("last_name"), lastName)
-                .set(field("updated_at"), LocalDateTime.now())
-                .where(field("id").eq(id))
+        return dsl.update(USERS)
+                .set(USERS.FIRST_NAME, firstName)
+                .set(USERS.LAST_NAME, lastName)
+                .set(USERS.UPDATED_AT, LocalDateTime.now())
+                .where(USERS.ID.eq(id))
                 .execute();
     }
     
     public int updateLastLogin(String id) {
-        return dsl.update(table(TABLE))
-                .set(field("last_login_at"), LocalDateTime.now())
-                .where(field("id").eq(id))
+        return dsl.update(USERS)
+                .set(USERS.LAST_LOGIN_AT, LocalDateTime.now())
+                .where(USERS.ID.eq(id))
                 .execute();
     }
     
     public int verifyEmail(String id) {
         LocalDateTime now = LocalDateTime.now();
-        return dsl.update(table(TABLE))
-                .set(field("email_verified"), true)
-                .set(field("email_verified_at"), now)
-                .set(field("updated_at"), now)
-                .where(field("id").eq(id))
+        return dsl.update(USERS)
+                .set(USERS.EMAIL_VERIFIED, (byte) 1) // true
+                .set(USERS.EMAIL_VERIFIED_AT, now)
+                .set(USERS.UPDATED_AT, now)
+                .where(USERS.ID.eq(id))
                 .execute();
     }
     
     public int delete(String id) {
-        return dsl.deleteFrom(table(TABLE))
-                .where(field("id").eq(id))
+        return dsl.deleteFrom(USERS)
+                .where(USERS.ID.eq(id))
                 .execute();
     }
     
     public boolean existsByEmail(String email) {
         return dsl.fetchExists(
-                dsl.selectFrom(table(TABLE))
-                        .where(field("email").eq(email))
+                dsl.selectFrom(USERS)
+                        .where(USERS.EMAIL.eq(email))
         );
     }
 }

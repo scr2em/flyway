@@ -1,8 +1,8 @@
 package com.Flyway.Flyway.repository;
 
+import com.Flyway.Flyway.jooq.tables.records.OrganizationMembersRecord;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
-import org.jooq.Record;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.jooq.impl.DSL.*;
+import static com.Flyway.Flyway.jooq.tables.OrganizationMembers.ORGANIZATION_MEMBERS;
 
 @Repository
 @RequiredArgsConstructor
@@ -18,30 +18,28 @@ public class OrganizationMemberRepository {
     
     private final DSLContext dsl;
     
-    private static final String TABLE = "organization_members";
-    
-    public Optional<Record> findById(String id) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("id").eq(id))
+    public Optional<OrganizationMembersRecord> findById(String id) {
+        return dsl.selectFrom(ORGANIZATION_MEMBERS)
+                .where(ORGANIZATION_MEMBERS.ID.eq(id))
                 .fetchOptional();
     }
     
-    public List<Record> findByOrganizationId(String organizationId) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("organization_id").eq(organizationId))
+    public List<OrganizationMembersRecord> findByOrganizationId(String organizationId) {
+        return dsl.selectFrom(ORGANIZATION_MEMBERS)
+                .where(ORGANIZATION_MEMBERS.ORGANIZATION_ID.eq(organizationId))
                 .fetch();
     }
     
-    public List<Record> findByUserId(String userId) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("user_id").eq(userId))
+    public List<OrganizationMembersRecord> findByUserId(String userId) {
+        return dsl.selectFrom(ORGANIZATION_MEMBERS)
+                .where(ORGANIZATION_MEMBERS.USER_ID.eq(userId))
                 .fetch();
     }
     
-    public Optional<Record> findByOrganizationIdAndUserId(String organizationId, String userId) {
-        return dsl.selectFrom(table(TABLE))
-                .where(field("organization_id").eq(organizationId)
-                        .and(field("user_id").eq(userId)))
+    public Optional<OrganizationMembersRecord> findByOrganizationIdAndUserId(String organizationId, String userId) {
+        return dsl.selectFrom(ORGANIZATION_MEMBERS)
+                .where(ORGANIZATION_MEMBERS.ORGANIZATION_ID.eq(organizationId)
+                        .and(ORGANIZATION_MEMBERS.USER_ID.eq(userId)))
                 .fetchOptional();
     }
     
@@ -49,39 +47,36 @@ public class OrganizationMemberRepository {
         String id = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         
-        dsl.insertInto(table(TABLE))
-                .columns(
-                        field("id"),
-                        field("organization_id"),
-                        field("user_id"),
-                        field("role_id"),
-                        field("joined_at"),
-                        field("created_at")
-                )
-                .values(id, organizationId, userId, roleId, now, now)
-                .execute();
+        OrganizationMembersRecord record = dsl.newRecord(ORGANIZATION_MEMBERS);
+        record.setId(id);
+        record.setOrganizationId(organizationId);
+        record.setUserId(userId);
+        record.setRoleId(roleId);
+        record.setJoinedAt(now);
+        record.setCreatedAt(now);
+        record.store();
         
         return id;
     }
     
     public int updateRole(String id, String roleId) {
-        return dsl.update(table(TABLE))
-                .set(field("role_id"), roleId)
-                .where(field("id").eq(id))
+        return dsl.update(ORGANIZATION_MEMBERS)
+                .set(ORGANIZATION_MEMBERS.ROLE_ID, roleId)
+                .where(ORGANIZATION_MEMBERS.ID.eq(id))
                 .execute();
     }
     
     public int delete(String id) {
-        return dsl.deleteFrom(table(TABLE))
-                .where(field("id").eq(id))
+        return dsl.deleteFrom(ORGANIZATION_MEMBERS)
+                .where(ORGANIZATION_MEMBERS.ID.eq(id))
                 .execute();
     }
     
     public boolean existsByOrganizationIdAndUserId(String organizationId, String userId) {
         return dsl.fetchExists(
-                dsl.selectFrom(table(TABLE))
-                        .where(field("organization_id").eq(organizationId)
-                                .and(field("user_id").eq(userId)))
+                dsl.selectFrom(ORGANIZATION_MEMBERS)
+                        .where(ORGANIZATION_MEMBERS.ORGANIZATION_ID.eq(organizationId)
+                                .and(ORGANIZATION_MEMBERS.USER_ID.eq(userId)))
         );
     }
 }

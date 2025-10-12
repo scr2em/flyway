@@ -1,6 +1,6 @@
 package com.Flyway.Flyway.exception;
 
-import com.Flyway.Flyway.dto.response.ErrorResponse;
+import com.Flyway.Flyway.dto.generated.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,9 +9,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.OffsetDateTime;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -19,99 +18,85 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFoundException(
             ResourceNotFoundException ex, HttpServletRequest request) {
-        ErrorResponse error = ErrorResponse.builder()
-                .success(false)
+        ErrorResponse error = new ErrorResponse()
+                .error("NOT_FOUND")
                 .message(ex.getMessage())
-                .status(HttpStatus.NOT_FOUND.value())
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
+                .details("Path: " + request.getRequestURI())
+                .timestamp(OffsetDateTime.now());
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
     
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponse> handleBadRequestException(
             BadRequestException ex, HttpServletRequest request) {
-        ErrorResponse error = ErrorResponse.builder()
-                .success(false)
+        ErrorResponse error = new ErrorResponse()
+                .error("BAD_REQUEST")
                 .message(ex.getMessage())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
+                .details("Path: " + request.getRequestURI())
+                .timestamp(OffsetDateTime.now());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
     
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorizedException(
             UnauthorizedException ex, HttpServletRequest request) {
-        ErrorResponse error = ErrorResponse.builder()
-                .success(false)
+        ErrorResponse error = new ErrorResponse()
+                .error("UNAUTHORIZED")
                 .message(ex.getMessage())
-                .status(HttpStatus.UNAUTHORIZED.value())
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
+                .details("Path: " + request.getRequestURI())
+                .timestamp(OffsetDateTime.now());
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
     
     @ExceptionHandler(ForbiddenException.class)
     public ResponseEntity<ErrorResponse> handleForbiddenException(
             ForbiddenException ex, HttpServletRequest request) {
-        ErrorResponse error = ErrorResponse.builder()
-                .success(false)
+        ErrorResponse error = new ErrorResponse()
+                .error("FORBIDDEN")
                 .message(ex.getMessage())
-                .status(HttpStatus.FORBIDDEN.value())
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
+                .details("Path: " + request.getRequestURI())
+                .timestamp(OffsetDateTime.now());
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
     
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflictException(
             ConflictException ex, HttpServletRequest request) {
-        ErrorResponse error = ErrorResponse.builder()
-                .success(false)
+        ErrorResponse error = new ErrorResponse()
+                .error("CONFLICT")
                 .message(ex.getMessage())
-                .status(HttpStatus.CONFLICT.value())
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
+                .details("Path: " + request.getRequestURI())
+                .timestamp(OffsetDateTime.now());
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
     
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(
             MethodArgumentNotValidException ex, HttpServletRequest request) {
-        Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getAllErrors().forEach(error -> {
-            String fieldName = ((FieldError) error).getField();
-            String errorMessage = error.getDefaultMessage();
-            errors.put(fieldName, errorMessage);
-        });
+        String errorDetails = ex.getBindingResult().getAllErrors().stream()
+                .map(error -> {
+                    String fieldName = ((FieldError) error).getField();
+                    String errorMessage = error.getDefaultMessage();
+                    return fieldName + ": " + errorMessage;
+                })
+                .collect(Collectors.joining("; "));
         
-        ErrorResponse error = ErrorResponse.builder()
-                .success(false)
+        ErrorResponse error = new ErrorResponse()
+                .error("VALIDATION_ERROR")
                 .message("Validation failed")
-                .status(HttpStatus.BAD_REQUEST.value())
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .errors(errors)
-                .build();
+                .details(errorDetails)
+                .timestamp(OffsetDateTime.now());
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
     
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGlobalException(
             Exception ex, HttpServletRequest request) {
-        ErrorResponse error = ErrorResponse.builder()
-                .success(false)
+        ErrorResponse error = new ErrorResponse()
+                .error("INTERNAL_SERVER_ERROR")
                 .message("Internal server error: " + ex.getMessage())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .path(request.getRequestURI())
-                .timestamp(LocalDateTime.now())
-                .build();
+                .details("Path: " + request.getRequestURI())
+                .timestamp(OffsetDateTime.now());
         return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

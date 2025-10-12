@@ -9,3 +9,4 @@ alwaysApply: true
 3. we use Mysql
 4. we have a docker compose file that runs mysql, mailhog, phpmyadmin
 5. user can only be in 1 organization 
+6. don't create md files until you are asked to 

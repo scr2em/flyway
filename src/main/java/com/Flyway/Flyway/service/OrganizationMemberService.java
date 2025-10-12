@@ -1,21 +1,23 @@
 package com.Flyway.Flyway.service;
 
-import com.Flyway.Flyway.dto.request.AddOrganizationMemberRequest;
-import com.Flyway.Flyway.dto.request.UpdateMemberRoleRequest;
-import com.Flyway.Flyway.dto.response.OrganizationMemberResponse;
-import com.Flyway.Flyway.dto.response.RoleResponse;
-import com.Flyway.Flyway.dto.response.UserResponse;
+import com.Flyway.Flyway.dto.generated.AddOrganizationMemberRequest;
+import com.Flyway.Flyway.dto.generated.UpdateMemberRoleRequest;
+import com.Flyway.Flyway.dto.generated.OrganizationMemberResponse;
+import com.Flyway.Flyway.dto.generated.RoleResponse;
+import com.Flyway.Flyway.dto.generated.UserResponse;
 import com.Flyway.Flyway.exception.ConflictException;
 import com.Flyway.Flyway.exception.ResourceNotFoundException;
+import com.Flyway.Flyway.jooq.tables.records.OrganizationMembersRecord;
+import com.Flyway.Flyway.jooq.tables.records.RolesRecord;
 import com.Flyway.Flyway.repository.OrganizationMemberRepository;
 import com.Flyway.Flyway.repository.RoleRepository;
 import com.Flyway.Flyway.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.jooq.Record;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,7 +32,7 @@ public class OrganizationMemberService {
     private final RoleService roleService;
     
     public OrganizationMemberResponse getMemberById(String id) {
-        Record member = memberRepository.findById(id)
+        OrganizationMembersRecord member = memberRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization member", "id", id));
         
         return mapToMemberResponse(member);
@@ -55,10 +57,10 @@ public class OrganizationMemberService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
         
         // Check if role exists and belongs to organization
-        Record role = roleRepository.findById(request.getRoleId())
+        RolesRecord role = roleRepository.findById(request.getRoleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", request.getRoleId()));
         
-        if (!role.get("organization_id", String.class).equals(organizationId)) {
+        if (!role.getOrganizationId().equals(organizationId)) {
             throw new ConflictException("Role does not belong to this organization");
         }
         
@@ -75,15 +77,15 @@ public class OrganizationMemberService {
     
     @Transactional
     public OrganizationMemberResponse updateMemberRole(String memberId, UpdateMemberRoleRequest request) {
-        Record member = memberRepository.findById(memberId)
+        OrganizationMembersRecord member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization member", "id", memberId));
         
         // Check if role exists and belongs to same organization
-        Record role = roleRepository.findById(request.getRoleId())
+        RolesRecord role = roleRepository.findById(request.getRoleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", request.getRoleId()));
         
-        String orgId = member.get("organization_id", String.class);
-        if (!role.get("organization_id", String.class).equals(orgId)) {
+        String orgId = member.getOrganizationId();
+        if (!role.getOrganizationId().equals(orgId)) {
             throw new ConflictException("Role does not belong to this organization");
         }
         
@@ -101,23 +103,21 @@ public class OrganizationMemberService {
         memberRepository.delete(memberId);
     }
     
-    private OrganizationMemberResponse mapToMemberResponse(Record record) {
-        String userId = record.get("user_id", String.class);
-        String roleId = record.get("role_id", String.class);
+    private OrganizationMemberResponse mapToMemberResponse(OrganizationMembersRecord record) {
+        String userId = record.getUserId();
+        String roleId = record.getRoleId();
         
         UserResponse user = userService.getUserById(userId);
         RoleResponse role = roleService.getRoleById(roleId);
         
-        return OrganizationMemberResponse.builder()
-                .id(record.get("id", String.class))
-                .organizationId(record.get("organization_id", String.class))
-                .userId(userId)
-                .roleId(roleId)
+        // Convert LocalDateTime to OffsetDateTime
+        LocalDateTime joinedAtLocal = record.getJoinedAt();
+        
+        return new OrganizationMemberResponse()
+                .id(record.getId())
                 .user(user)
                 .role(role)
-                .joinedAt(record.get("joined_at", LocalDateTime.class))
-                .createdAt(record.get("created_at", LocalDateTime.class))
-                .build();
+                .joinedAt(joinedAtLocal != null ? joinedAtLocal.atOffset(ZoneOffset.UTC) : null);
     }
 }
 

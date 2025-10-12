@@ -1,7 +1,9 @@
 package com.Flyway.Flyway.service;
 
-import com.Flyway.Flyway.dto.response.PermissionResponse;
+import com.Flyway.Flyway.dto.generated.PermissionResponse;
 import com.Flyway.Flyway.exception.ResourceNotFoundException;
+import com.Flyway.Flyway.jooq.tables.records.OrganizationMembersRecord;
+import com.Flyway.Flyway.jooq.tables.records.PermissionsRecord;
 import com.Flyway.Flyway.repository.OrganizationMemberRepository;
 import com.Flyway.Flyway.repository.PermissionRepository;
 import com.Flyway.Flyway.repository.RolePermissionRepository;
@@ -9,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.jooq.Record;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,14 +23,14 @@ public class PermissionService {
     private final RolePermissionRepository rolePermissionRepository;
     
     public PermissionResponse getPermissionById(String id) {
-        Record permission = permissionRepository.findById(id)
+        PermissionsRecord permission = permissionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Permission", "id", id));
         
         return mapToPermissionResponse(permission);
     }
     
     public PermissionResponse getPermissionByCode(String code) {
-        Record permission = permissionRepository.findByCode(code)
+        PermissionsRecord permission = permissionRepository.findByCode(code)
                 .orElseThrow(() -> new ResourceNotFoundException("Permission", "code", code));
         
         return mapToPermissionResponse(permission);
@@ -63,8 +64,8 @@ public class PermissionService {
             return false;
         }
         
-        Record member = memberOptional.get();
-        String roleId = member.get("role_id", String.class);
+        OrganizationMembersRecord member = memberOptional.get();
+        String roleId = member.getRoleId();
         
         if (roleId == null) {
             return false;
@@ -76,7 +77,7 @@ public class PermissionService {
             return false;
         }
         
-        String permissionId = permissionOptional.get().get("id", String.class);
+        String permissionId = permissionOptional.get().getId();
         
         // Check if the role has this permission
         return rolePermissionRepository.existsByRoleIdAndPermissionId(roleId, permissionId);
@@ -97,8 +98,8 @@ public class PermissionService {
             return List.of();
         }
         
-        Record member = memberOptional.get();
-        String roleId = member.get("role_id", String.class);
+        OrganizationMembersRecord member = memberOptional.get();
+        String roleId = member.getRoleId();
         
         if (roleId == null) {
             return List.of();
@@ -112,15 +113,18 @@ public class PermissionService {
                 .collect(Collectors.toList());
     }
     
-    private PermissionResponse mapToPermissionResponse(Record record) {
-        return PermissionResponse.builder()
-                .id(record.get("id", String.class))
-                .code(record.get("code", String.class))
-                .label(record.get("label", String.class))
-                .description(record.get("description", String.class))
-                .category(record.get("category", String.class))
-                .createdAt(record.get("created_at", LocalDateTime.class))
-                .build();
+    private PermissionResponse mapToPermissionResponse(PermissionsRecord record) {
+        String code = record.getCode();
+        String[] codeParts = code != null ? code.split("\\.", 2) : new String[]{"", ""};
+        String resource = codeParts.length > 0 ? codeParts[0] : "";
+        String action = codeParts.length > 1 ? codeParts[1] : "";
+        
+        return new PermissionResponse()
+                .id(record.getId())
+                .name(record.getLabel())
+                .description(record.getDescription())
+                .resource(resource)
+                .action(action);
     }
 }
 
