@@ -134,6 +134,36 @@
 					</excludes>
 				</configuration>
 			</plugin>
+			<!-- Flyway Maven Plugin - Runs migrations before jOOQ code generation -->
+			<plugin>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>flyway-migrate</id>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>migrate</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<url>jdbc:mysql://localhost:3306/flyway_db?createDatabaseIfNotExist=true</url>
+					<user>root</user>
+					<password>root</password>
+					<locations>
+						<location>filesystem:src/main/resources/db/migration</location>
+					</locations>
+				</configuration>
+				<dependencies>
+					<dependency>
+						<groupId>com.mysql</groupId>
+						<artifactId>mysql-connector-j</artifactId>
+						<version>8.3.0</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+			<!-- jOOQ Code Generation Plugin - Runs after Flyway migrations -->
 			<plugin>
 				<groupId>org.jooq</groupId>
 				<artifactId>jooq-codegen-maven</artifactId>
