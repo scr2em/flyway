@@ -35,14 +35,14 @@ services:
     networks:
       - flyway_network
 
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: flyway_mailhog
-    ports:
-      - "1025:1025"  # SMTP server
-      - "8025:8025"  # Web UI
-    networks:
-      - flyway_network
+  # mailhog:
+  #   image: mailhog/mailhog:latest
+  #   container_name: flyway_mailhog
+  #   ports:
+  #     - "1025:1025"  # SMTP server
+  #     - "8025:8025"  # Web UI
+  #   networks:
+  #     - flyway_network
 
 volumes:
   mysql_data:
