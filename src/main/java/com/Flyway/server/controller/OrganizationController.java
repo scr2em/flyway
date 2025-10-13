@@ -22,7 +22,6 @@ public class OrganizationController {
     private final OrganizationService organizationService;
     
     @GetMapping
-    @RequirePermission("organization.view")
     public ResponseEntity<OrganizationResponse> getCurrentOrganization(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         OrganizationResponse organization = organizationService.getOrganizationById(userDetails.getOrganizationId());
