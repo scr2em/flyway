@@ -164,6 +164,7 @@ public class RoleService {
                 .organizationId(record.getOrganizationId())
                 .name(record.getName())
                 .description(null) // Description not stored in database
+                .isSystemRole(record.getIsSystemRole() != 0) // Convert byte to boolean
                 .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
                 .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null)
                 .permissions(permissions);
