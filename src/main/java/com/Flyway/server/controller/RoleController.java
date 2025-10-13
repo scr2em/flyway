@@ -47,9 +47,8 @@ public class RoleController {
     public ResponseEntity<RoleResponse> createRole(
             @Valid @RequestBody CreateRoleRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        // Override organizationId from request with authenticated user's organization
-        request.setOrganizationId(userDetails.getOrganizationId());
-        RoleResponse role = roleService.createRole(request);
+        // Get organizationId from authenticated user
+        RoleResponse role = roleService.createRole(request, userDetails.getOrganizationId());
         return ResponseEntity.status(HttpStatus.CREATED).body(role);
     }
     

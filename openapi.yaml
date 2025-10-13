@@ -117,7 +117,6 @@ components:
       description: Request to create a new role
       required:
         - name
-        - organizationId
       properties:
         name:
           type: string
@@ -125,9 +124,6 @@ components:
         description:
           type: string
           description: Role description
-        organizationId:
-          type: string
-          description: Organization ID
         permissionIds:
           type: array
           items:
@@ -155,16 +151,12 @@ components:
       description: Request to create an invitation
       required:
         - email
-        - organizationId
         - roleId
       properties:
         email:
           type: string
           format: email
           description: Email of the invited user
-        organizationId:
-          type: string
-          description: Organization ID
         roleId:
           type: string
           description: Role ID
@@ -350,6 +342,7 @@ components:
         - id
         - name
         - organizationId
+        - isSystemRole
         - createdAt
       properties:
         id:
@@ -364,6 +357,9 @@ components:
         organizationId:
           type: string
           description: Organization ID
+        isSystemRole:
+          type: boolean
+          description: Whether this is a system role
         permissions:
           type: array
           items:
@@ -869,23 +865,6 @@ paths:
                 $ref: '#/components/schemas/OrganizationResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-    
-    delete:
-      operationId: deleteCurrentOrganization
-      summary: Delete current organization
-      tags:
-        - Organizations
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Organization deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':

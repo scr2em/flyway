@@ -46,13 +46,5 @@ public class OrganizationController {
         OrganizationResponse organization = organizationService.updateOrganization(userDetails.getOrganizationId(), request);
         return ResponseEntity.ok(organization);
     }
-    
-    @DeleteMapping
-    @RequirePermission("organization.delete")
-    public ResponseEntity<Void> deleteOrganization(
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        organizationService.deleteOrganization(userDetails.getOrganizationId());
-        return ResponseEntity.ok().build();
-    }
 }
 

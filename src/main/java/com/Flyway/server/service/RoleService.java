@@ -54,15 +54,15 @@ public class RoleService {
     }
     
     @Transactional
-    public RoleResponse createRole(CreateRoleRequest request) {
+    public RoleResponse createRole(CreateRoleRequest request, String organizationId) {
         // Check if role name already exists in organization
-        roleRepository.findByOrganizationIdAndName(request.getOrganizationId(), request.getName())
+        roleRepository.findByOrganizationIdAndName(organizationId, request.getName())
                 .ifPresent(r -> {
                     throw new ConflictException("Role with name '" + request.getName() + "' already exists in this organization");
                 });
         
         // Create role
-        String roleId = roleRepository.create(request.getOrganizationId(), request.getName(), false, false);
+        String roleId = roleRepository.create(organizationId, request.getName(), false, false);
         
         // Assign permissions
         if (request.getPermissionIds() != null && !request.getPermissionIds().isEmpty()) {
@@ -76,6 +76,11 @@ public class RoleService {
     public RoleResponse updateRole(String id, UpdateRoleRequest request) {
         RolesRecord role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", id));
+        
+        // Check if role is a system role (byte 1 = true)
+        if (role.getIsSystemRole() != 0) {
+            throw new BadRequestException("Cannot update system role");
+        }
         
         // Check if role is immutable (byte 1 = true)
         if (role.getIsImmutable() != 0) {
@@ -105,6 +110,11 @@ public class RoleService {
     public void deleteRole(String id) {
         RolesRecord role = roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", id));
+        
+        // Check if role is a system role (byte 1 = true)
+        if (role.getIsSystemRole() != 0) {
+            throw new BadRequestException("Cannot delete system role");
+        }
         
         // Check if role is immutable (byte 1 = true)
         if (role.getIsImmutable() != 0) {

@@ -81,14 +81,6 @@ public class OrganizationService {
         return getOrganizationById(id);
     }
     
-    @Transactional
-    public void deleteOrganization(String id) {
-        organizationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", id));
-        
-        organizationRepository.delete(id);
-    }
-    
     private OrganizationResponse mapToOrganizationResponse(OrganizationsRecord record) {
         // Convert LocalDateTime to OffsetDateTime
         LocalDateTime createdAtLocal = record.getCreatedAt();
