@@ -124,11 +124,11 @@ components:
         description:
           type: string
           description: Role description
-        permissionIds:
+        permissionCodes:
           type: array
           items:
             type: string
-          description: List of permission IDs
+          description: List of permission codes
 
     UpdateRoleRequest:
       type: object
@@ -140,11 +140,11 @@ components:
         description:
           type: string
           description: Role description
-        permissionIds:
+        permissionCodes:
           type: array
           items:
             type: string
-          description: List of permission IDs
+          description: List of permission codes
 
     CreateInvitationRequest:
       type: object
@@ -378,14 +378,14 @@ components:
       type: object
       description: Permission information
       required:
-        - id
+        - code
         - name
         - resource
         - action
       properties:
-        id:
+        code:
           type: string
-          description: Permission ID
+          description: Permission code
         name:
           type: string
           description: Permission name
@@ -1029,35 +1029,7 @@ paths:
         '403':
           $ref: '#/components/responses/ForbiddenError'
 
-  /permissions/{id}:
-    get:
-      operationId: getPermissionById
-      summary: Get permission by ID
-      tags:
-        - Permissions
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Permission retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PermissionResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-
-  /permissions/code/{code}:
+  /permissions/{code}:
     get:
       operationId: getPermissionByCode
       summary: Get permission by code

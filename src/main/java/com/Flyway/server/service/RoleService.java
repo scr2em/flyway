@@ -65,8 +65,8 @@ public class RoleService {
         String roleId = roleRepository.create(organizationId, request.getName(), false, false);
         
         // Assign permissions
-        if (request.getPermissionIds() != null && !request.getPermissionIds().isEmpty()) {
-            assignPermissionsToRole(roleId, request.getPermissionIds());
+        if (request.getPermissionCodes() != null && !request.getPermissionCodes().isEmpty()) {
+            assignPermissionsToRole(roleId, request.getPermissionCodes());
         }
         
         return getRoleById(roleId);
@@ -93,13 +93,13 @@ public class RoleService {
         }
         
         // Update permissions if provided
-        if (request.getPermissionIds() != null) {
+        if (request.getPermissionCodes() != null) {
             // Remove existing permissions
             rolePermissionRepository.deleteByRoleId(id);
             
             // Add new permissions
-            if (!request.getPermissionIds().isEmpty()) {
-                assignPermissionsToRole(id, request.getPermissionIds());
+            if (!request.getPermissionCodes().isEmpty()) {
+                assignPermissionsToRole(id, request.getPermissionCodes());
             }
         }
         
@@ -138,14 +138,14 @@ public class RoleService {
         }
     }
     
-    private void assignPermissionsToRole(String roleId, List<String> permissionIds) {
-        for (String permissionId : permissionIds) {
+    private void assignPermissionsToRole(String roleId, List<String> permissionCodes) {
+        for (String permissionCode : permissionCodes) {
             // Verify permission exists
-            permissionRepository.findById(permissionId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Permission", "id", permissionId));
+            permissionRepository.findByCode(permissionCode)
+                    .orElseThrow(() -> new ResourceNotFoundException("Permission", "code", permissionCode));
             
             // Create role-permission association
-            rolePermissionRepository.create(roleId, permissionId);
+            rolePermissionRepository.create(roleId, permissionCode);
         }
     }
     
@@ -181,7 +181,7 @@ public class RoleService {
             String action = codeParts.length > 1 ? codeParts[1] : "";
             
             permissions.add(new PermissionResponse()
-                    .id(record.get("id", String.class))
+                    .code(record.get("code", String.class))
                     .name(record.get("label", String.class))
                     .description(record.get("description", String.class))
                     .resource(resource)

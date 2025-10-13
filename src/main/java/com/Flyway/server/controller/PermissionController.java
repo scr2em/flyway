@@ -18,14 +18,7 @@ public class PermissionController {
     private final PermissionService permissionService;
     
     // Permissions are system-wide, so we require permission.view to see them
-    @GetMapping("/{id}")
-    @RequirePermission("permission.view")
-    public ResponseEntity<PermissionResponse> getPermissionById(@PathVariable String id) {
-        PermissionResponse permission = permissionService.getPermissionById(id);
-        return ResponseEntity.ok(permission);
-    }
-    
-    @GetMapping("/code/{code}")
+    @GetMapping("/{code}")
     @RequirePermission("permission.view")
     public ResponseEntity<PermissionResponse> getPermissionByCode(@PathVariable String code) {
         PermissionResponse permission = permissionService.getPermissionByCode(code);

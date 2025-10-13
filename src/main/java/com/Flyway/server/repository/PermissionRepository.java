@@ -16,12 +16,6 @@ public class PermissionRepository {
     
     private final DSLContext dsl;
     
-    public Optional<PermissionsRecord> findById(String id) {
-        return dsl.selectFrom(PERMISSIONS)
-                .where(PERMISSIONS.ID.eq(id))
-                .fetchOptional();
-    }
-    
     public Optional<PermissionsRecord> findByCode(String code) {
         return dsl.selectFrom(PERMISSIONS)
                 .where(PERMISSIONS.CODE.eq(code))
@@ -39,9 +33,9 @@ public class PermissionRepository {
                 .fetch();
     }
     
-    public List<PermissionsRecord> findByIds(List<String> ids) {
+    public List<PermissionsRecord> findByCodes(List<String> codes) {
         return dsl.selectFrom(PERMISSIONS)
-                .where(PERMISSIONS.ID.in(ids))
+                .where(PERMISSIONS.CODE.in(codes))
                 .fetch();
     }
 }

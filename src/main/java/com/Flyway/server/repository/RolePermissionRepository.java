@@ -22,22 +22,22 @@ public class RolePermissionRepository {
         return dsl.select()
                 .from(ROLE_PERMISSIONS)
                 .join(PERMISSIONS)
-                .on(ROLE_PERMISSIONS.PERMISSION_ID.eq(PERMISSIONS.ID))
+                .on(ROLE_PERMISSIONS.PERMISSION_CODE.eq(PERMISSIONS.CODE))
                 .where(ROLE_PERMISSIONS.ROLE_ID.eq(roleId))
                 .fetch();
     }
     
-    public String create(String roleId, String permissionId) {
+    public String create(String roleId, String permissionCode) {
         String id = UUID.randomUUID().toString();
         
         dsl.insertInto(ROLE_PERMISSIONS)
                 .columns(
                         ROLE_PERMISSIONS.ID,
                         ROLE_PERMISSIONS.ROLE_ID,
-                        ROLE_PERMISSIONS.PERMISSION_ID,
+                        ROLE_PERMISSIONS.PERMISSION_CODE,
                         ROLE_PERMISSIONS.CREATED_AT
                 )
-                .values(id, roleId, permissionId, LocalDateTime.now())
+                .values(id, roleId, permissionCode, LocalDateTime.now())
                 .execute();
         
         return id;
@@ -49,18 +49,18 @@ public class RolePermissionRepository {
                 .execute();
     }
     
-    public int deleteByRoleIdAndPermissionId(String roleId, String permissionId) {
+    public int deleteByRoleIdAndPermissionCode(String roleId, String permissionCode) {
         return dsl.deleteFrom(ROLE_PERMISSIONS)
                 .where(ROLE_PERMISSIONS.ROLE_ID.eq(roleId)
-                        .and(ROLE_PERMISSIONS.PERMISSION_ID.eq(permissionId)))
+                        .and(ROLE_PERMISSIONS.PERMISSION_CODE.eq(permissionCode)))
                 .execute();
     }
     
-    public boolean existsByRoleIdAndPermissionId(String roleId, String permissionId) {
+    public boolean existsByRoleIdAndPermissionCode(String roleId, String permissionCode) {
         return dsl.fetchExists(
                 dsl.selectFrom(ROLE_PERMISSIONS)
                         .where(ROLE_PERMISSIONS.ROLE_ID.eq(roleId)
-                                .and(ROLE_PERMISSIONS.PERMISSION_ID.eq(permissionId)))
+                                .and(ROLE_PERMISSIONS.PERMISSION_CODE.eq(permissionCode)))
         );
     }
 }

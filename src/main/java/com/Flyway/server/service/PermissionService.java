@@ -23,13 +23,6 @@ public class PermissionService {
     private final OrganizationMemberRepository organizationMemberRepository;
     private final RolePermissionRepository rolePermissionRepository;
     
-    public PermissionResponse getPermissionById(String id) {
-        PermissionsRecord permission = permissionRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Permission", "id", id));
-        
-        return mapToPermissionResponse(permission);
-    }
-    
     public PermissionResponse getPermissionByCode(String code) {
         PermissionsRecord permission = permissionRepository.findByCode(code)
                 .orElseThrow(() -> new ResourceNotFoundException("Permission", "code", code));
@@ -72,16 +65,8 @@ public class PermissionService {
             return false;
         }
         
-        // Get permission by code
-        var permissionOptional = permissionRepository.findByCode(permissionCode);
-        if (permissionOptional.isEmpty()) {
-            return false;
-        }
-        
-        String permissionId = permissionOptional.get().getId();
-        
         // Check if the role has this permission
-        return rolePermissionRepository.existsByRoleIdAndPermissionId(roleId, permissionId);
+        return rolePermissionRepository.existsByRoleIdAndPermissionCode(roleId, permissionCode);
     }
     
     /**
@@ -121,7 +106,7 @@ public class PermissionService {
         String action = codeParts.length > 1 ? codeParts[1] : "";
         
         return new PermissionResponse()
-                .id(record.getId())
+                .code(record.getCode())
                 .name(record.getLabel())
                 .description(record.getDescription())
                 .resource(resource)
