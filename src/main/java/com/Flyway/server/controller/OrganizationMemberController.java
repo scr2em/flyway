@@ -6,6 +6,7 @@ import com.Flyway.server.security.CustomUserDetails;
 import com.Flyway.server.security.RequirePermission;
 import com.Flyway.server.service.OrganizationMemberService;
 import com.Flyway.server.dto.generated.OrganizationMemberResponse;
+import com.Flyway.server.dto.generated.PaginatedOrganizationMemberResponse;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/members")
@@ -36,9 +36,12 @@ public class OrganizationMemberController {
     
     @GetMapping
     @RequirePermission("member.view")
-    public ResponseEntity<List<OrganizationMemberResponse>> getMembers(
+    public ResponseEntity<PaginatedOrganizationMemberResponse> getMembers(
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "20") Integer limit,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        List<OrganizationMemberResponse> members = memberService.getMembersByOrganizationId(userDetails.getOrganizationId());
+        PaginatedOrganizationMemberResponse members = memberService.getMembersByOrganizationIdWithPagination(
+                userDetails.getOrganizationId(), page, limit);
         return ResponseEntity.ok(members);
     }
     

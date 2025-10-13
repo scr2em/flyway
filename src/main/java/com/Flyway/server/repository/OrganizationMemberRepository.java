@@ -30,6 +30,23 @@ public class OrganizationMemberRepository {
                 .fetch();
     }
     
+    public List<OrganizationMembersRecord> findByOrganizationIdWithPagination(
+            String organizationId, int limit, int offset) {
+        return dsl.selectFrom(ORGANIZATION_MEMBERS)
+                .where(ORGANIZATION_MEMBERS.ORGANIZATION_ID.eq(organizationId))
+                .orderBy(ORGANIZATION_MEMBERS.JOINED_AT.desc())
+                .limit(limit)
+                .offset(offset)
+                .fetch();
+    }
+    
+    public int countByOrganizationId(String organizationId) {
+        return dsl.fetchCount(
+                dsl.selectFrom(ORGANIZATION_MEMBERS)
+                        .where(ORGANIZATION_MEMBERS.ORGANIZATION_ID.eq(organizationId))
+        );
+    }
+    
     public List<OrganizationMembersRecord> findByUserId(String userId) {
         return dsl.selectFrom(ORGANIZATION_MEMBERS)
                 .where(ORGANIZATION_MEMBERS.USER_ID.eq(userId))

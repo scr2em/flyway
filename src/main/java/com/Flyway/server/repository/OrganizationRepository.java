@@ -63,5 +63,13 @@ public class OrganizationRepository {
                 .where(ORGANIZATIONS.ID.eq(id))
                 .execute();
     }
+    
+    public boolean isUserOrganizationOwner(String userId, String organizationId) {
+        return dsl.fetchExists(
+                dsl.selectFrom(ORGANIZATIONS)
+                        .where(ORGANIZATIONS.ID.eq(organizationId)
+                                .and(ORGANIZATIONS.CREATED_BY.eq(userId)))
+        );
+    }
 }
 

@@ -3,6 +3,7 @@ package com.Flyway.server.service;
 import com.Flyway.server.dto.generated.AddOrganizationMemberRequest;
 import com.Flyway.server.dto.generated.UpdateMemberRoleRequest;
 import com.Flyway.server.dto.generated.OrganizationMemberResponse;
+import com.Flyway.server.dto.generated.PaginatedOrganizationMemberResponse;
 import com.Flyway.server.dto.generated.RoleResponse;
 import com.Flyway.server.dto.generated.UserResponse;
 import com.Flyway.server.jooq.tables.records.OrganizationMembersRecord;
@@ -47,6 +48,25 @@ public class OrganizationMemberService {
         return memberRepository.findByOrganizationId(organizationId).stream()
                 .map(this::mapToMemberResponse)
                 .collect(Collectors.toList());
+    }
+    
+    public PaginatedOrganizationMemberResponse getMembersByOrganizationIdWithPagination(
+            String organizationId, int page, int limit) {
+        int offset = page * limit;
+        
+        List<OrganizationMemberResponse> members = memberRepository
+                .findByOrganizationIdWithPagination(organizationId, limit, offset)
+                .stream()
+                .map(this::mapToMemberResponse)
+                .collect(Collectors.toList());
+        
+        int totalCount = memberRepository.countByOrganizationId(organizationId);
+        
+        return new PaginatedOrganizationMemberResponse()
+                .data(members)
+                .total(totalCount)
+                .count(members.size())
+                .itemsPerPage(limit);
     }
     
     public List<OrganizationMemberResponse> getMembersByUserId(String userId) {

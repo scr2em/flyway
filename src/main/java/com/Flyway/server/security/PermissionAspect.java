@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.UnauthorizedException;
+import com.Flyway.server.repository.OrganizationRepository;
 import com.Flyway.server.service.PermissionService;
 
 import java.lang.reflect.Method;
@@ -23,6 +24,7 @@ import java.lang.reflect.Method;
 public class PermissionAspect {
     
     private final PermissionService permissionService;
+    private final OrganizationRepository organizationRepository;
     
     @Before("@annotation(com.Flyway.server.security.RequirePermission)")
     public void checkPermission(JoinPoint joinPoint) {
@@ -48,6 +50,15 @@ public class PermissionAspect {
         
         if (organizationId == null) {
             throw new ForbiddenException("User is not a member of any organization");
+        }
+        
+        // Check if user is the organization owner - owners have all permissions
+        boolean isOwner = organizationRepository.isUserOrganizationOwner(userId, organizationId);
+        
+        if (isOwner) {
+            log.debug("User '{}' is the owner of organization '{}', granting permission '{}'", 
+                      userId, organizationId, requiredPermission);
+            return; // Organization owners have all permissions
         }
         
         // Check if user has the required permission
