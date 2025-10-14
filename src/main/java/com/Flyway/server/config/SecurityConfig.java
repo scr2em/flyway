@@ -33,7 +33,7 @@ public class SecurityConfig {
             .cors(cors -> {})
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/auth/**", "/api/public/**", "/actuator/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/public/**", "/actuator/**", "/api/invitations/token/**").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

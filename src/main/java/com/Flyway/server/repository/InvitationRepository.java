@@ -74,6 +74,22 @@ public class InvitationRepository {
                 .execute();
     }
     
+    public int updateToken(String id, String token) {
+        return dsl.update(INVITATIONS)
+                .set(INVITATIONS.TOKEN, token)
+                .set(INVITATIONS.UPDATED_AT, LocalDateTime.now())
+                .where(INVITATIONS.ID.eq(id))
+                .execute();
+    }
+    
+    public int updateExpiresAt(String id, LocalDateTime expiresAt) {
+        return dsl.update(INVITATIONS)
+                .set(INVITATIONS.EXPIRES_AT, expiresAt)
+                .set(INVITATIONS.UPDATED_AT, LocalDateTime.now())
+                .where(INVITATIONS.ID.eq(id))
+                .execute();
+    }
+    
     public int delete(String id) {
         return dsl.deleteFrom(INVITATIONS)
                 .where(INVITATIONS.ID.eq(id))

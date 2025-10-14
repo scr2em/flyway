@@ -36,6 +36,10 @@ public class UserRepository {
     }
     
     public String create(String firstName, String lastName, String email, String passwordHash, String userStatusId) {
+        return create(firstName, lastName, email, passwordHash, userStatusId, false);
+    }
+    
+    public String create(String firstName, String lastName, String email, String passwordHash, String userStatusId, boolean tempPassword) {
         String id = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         
@@ -47,6 +51,7 @@ public class UserRepository {
         record.setPasswordHash(passwordHash);
         record.setUserStatusId(userStatusId);
         record.setEmailVerified((byte) 0); // false
+        record.setTempPassword((byte) (tempPassword ? 1 : 0));
         record.setCreatedAt(now);
         record.setUpdatedAt(now);
         record.store();
@@ -76,6 +81,32 @@ public class UserRepository {
                 .set(USERS.EMAIL_VERIFIED, (byte) 1) // true
                 .set(USERS.EMAIL_VERIFIED_AT, now)
                 .set(USERS.UPDATED_AT, now)
+                .where(USERS.ID.eq(id))
+                .execute();
+    }
+    
+    public int updatePassword(String id, String passwordHash) {
+        return dsl.update(USERS)
+                .set(USERS.PASSWORD_HASH, passwordHash)
+                .set(USERS.TEMP_PASSWORD, (byte) 0) // false - no longer temp password
+                .set(USERS.UPDATED_AT, LocalDateTime.now())
+                .where(USERS.ID.eq(id))
+                .execute();
+    }
+    
+    public int updatePasswordWithTempFlag(String id, String passwordHash, boolean isTempPassword) {
+        return dsl.update(USERS)
+                .set(USERS.PASSWORD_HASH, passwordHash)
+                .set(USERS.TEMP_PASSWORD, (byte) (isTempPassword ? 1 : 0))
+                .set(USERS.UPDATED_AT, LocalDateTime.now())
+                .where(USERS.ID.eq(id))
+                .execute();
+    }
+    
+    public int updateTempPasswordFlag(String id, boolean isTempPassword) {
+        return dsl.update(USERS)
+                .set(USERS.TEMP_PASSWORD, (byte) (isTempPassword ? 1 : 0))
+                .set(USERS.UPDATED_AT, LocalDateTime.now())
                 .where(USERS.ID.eq(id))
                 .execute();
     }

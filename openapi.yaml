@@ -150,9 +150,17 @@ components:
       type: object
       description: Request to create an invitation
       required:
+        - firstName
+        - lastName
         - email
         - roleId
       properties:
+        firstName:
+          type: string
+          description: First name of the invited user
+        lastName:
+          type: string
+          description: Last name of the invited user
         email:
           type: string
           format: email
@@ -160,16 +168,6 @@ components:
         roleId:
           type: string
           description: Role ID
-
-    RespondToInvitationRequest:
-      type: object
-      description: Request to respond to an invitation
-      required:
-        - accept
-      properties:
-        accept:
-          type: boolean
-          description: Whether to accept or reject the invitation
 
     AddOrganizationMemberRequest:
       type: object
@@ -242,6 +240,10 @@ components:
           allOf:
             - $ref: '#/components/schemas/UserOrganizationResponse'
           description: Organization information (null if user is not in an organization)
+        invitationStatus:
+          $ref: '#/components/schemas/InvitationStatusResponse'
+          nullable: true
+          description: Invitation status (null for organization owners who were not invited)
         createdAt:
           type: string
           format: date-time
@@ -1085,114 +1087,13 @@ paths:
         '403':
           $ref: '#/components/responses/ForbiddenError'
 
-  /invitations:
-    get:
-      operationId: getInvitationsByOrganization
-      summary: Get all invitations for organization
-      tags:
-        - Invitations
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Invitations retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/InvitationResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-    
-    post:
-      operationId: createInvitation
-      summary: Create a new invitation
-      tags:
-        - Invitations
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateInvitationRequest'
-      responses:
-        '201':
-          description: Invitation created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvitationResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-
-  /invitations/{id}:
-    get:
-      operationId: getInvitationById
-      summary: Get invitation by ID
-      tags:
-        - Invitations
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Invitation retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InvitationResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-    
-    delete:
-      operationId: deleteInvitation
-      summary: Delete invitation
-      tags:
-        - Invitations
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Invitation deleted successfully
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-
   /invitations/token/{token}:
     get:
       operationId: getInvitationByToken
-      summary: Get invitation by token
+      summary: Get invitation by token (public endpoint)
+      description: Public endpoint to retrieve invitation details by token
       tags:
         - Invitations
-      security:
-        - BearerAuth: []
       parameters:
         - name: token
           in: path
@@ -1206,68 +1107,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InvitationResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
 
-  /invitations/token/{token}/respond:
+  /invitations/token/{token}/accept:
     post:
-      operationId: respondToInvitation
-      summary: Respond to invitation (accept or reject)
+      operationId: acceptInvitation
+      summary: Accept invitation (public endpoint)
+      description: Public endpoint to accept an invitation
       tags:
         - Invitations
-      security:
-        - BearerAuth: []
       parameters:
         - name: token
           in: path
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RespondToInvitationRequest'
       responses:
         '200':
-          description: Invitation response processed successfully
+          description: Invitation accepted successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/InvitationResponse'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /invitations/token/{token}/reject:
+    post:
+      operationId: rejectInvitation
+      summary: Reject invitation (public endpoint)
+      description: Public endpoint to reject an invitation
+      tags:
+        - Invitations
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invitation rejected successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /invitations/{id}/resend:
+    post:
+      operationId: resendInvitation
+      summary: Resend invitation (private endpoint)
+      description: Resend an invitation - requires invitation.create permission
+      tags:
+        - Invitations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invitation resent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitationResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
-
-  /invitations/my-invitations:
-    get:
-      operationId: getMyInvitations
-      summary: Get invitations sent to current user
-      tags:
-        - Invitations
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Invitations retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/InvitationResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
 
   /members:
     get:

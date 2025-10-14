@@ -5,15 +5,21 @@ import com.Flyway.server.dto.generated.UserResponse;
 import com.Flyway.server.dto.generated.UserResponseOrganization;
 import com.Flyway.server.dto.generated.UserStatusResponse;
 import com.Flyway.server.dto.generated.UserStatusEnum;
+import com.Flyway.server.dto.generated.InvitationStatusResponse;
+import com.Flyway.server.dto.generated.InvitationStatusEnum;
 import com.Flyway.server.jooq.tables.records.OrganizationMembersRecord;
 import com.Flyway.server.jooq.tables.records.OrganizationsRecord;
 import com.Flyway.server.jooq.tables.records.UsersRecord;
+import com.Flyway.server.jooq.tables.records.InvitationsRecord;
+import com.Flyway.server.jooq.tables.records.InvitationStatusesRecord;
 import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.OrganizationRepository;
 import com.Flyway.server.repository.UserRepository;
 import com.Flyway.server.repository.UserStatusRepository;
+import com.Flyway.server.repository.InvitationRepository;
+import com.Flyway.server.repository.InvitationStatusRepository;
 import com.Flyway.server.jooq.tables.records.UserStatusesRecord;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +40,8 @@ public class UserService {
     private final OrganizationMemberRepository organizationMemberRepository;
     private final OrganizationRepository organizationRepository;
     private final PermissionService permissionService;
+    private final InvitationRepository invitationRepository;
+    private final InvitationStatusRepository invitationStatusRepository;
     
     public UserResponse getUserById(String id) {
         UsersRecord user = userRepository.findById(id)
@@ -168,6 +176,25 @@ public class UserService {
             }
         }
         
+        // Get invitation status by joining with invitations table
+        // For organization owners who were not invited, this will be null
+        InvitationStatusResponse invitationStatusResponse = null;
+        List<InvitationsRecord> invitations = invitationRepository.findByEmail(record.getEmail());
+        if (!invitations.isEmpty()) {
+            // Get the most recent invitation
+            InvitationsRecord invitation = invitations.get(0);
+            String invitationStatusId = invitation.getInvitationStatusId();
+            InvitationStatusesRecord invitationStatusRecord = invitationStatusRepository.findById(invitationStatusId).orElse(null);
+            
+            if (invitationStatusRecord != null) {
+                String invitationStatusCode = invitationStatusRecord.getCode();
+                InvitationStatusEnum invitationStatusEnum = InvitationStatusEnum.fromValue(invitationStatusCode);
+                invitationStatusResponse = new InvitationStatusResponse()
+                        .id(invitationStatusId)
+                        .status(invitationStatusEnum);
+            }
+        }
+        
         // Convert LocalDateTime to OffsetDateTime
         LocalDateTime createdAtLocal = record.getCreatedAt();
         LocalDateTime updatedAtLocal = record.getUpdatedAt();
@@ -179,6 +206,7 @@ public class UserService {
                 .email(record.getEmail())
                 .status(statusResponse)
                 .organization(organization)
+                .invitationStatus(invitationStatusResponse)
                 .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
                 .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null);
     }

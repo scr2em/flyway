@@ -7,6 +7,7 @@ import com.Flyway.server.dto.generated.InvitationStatusEnum;
 import com.Flyway.server.dto.generated.OrganizationResponse;
 import com.Flyway.server.dto.generated.RoleResponse;
 import com.Flyway.server.dto.generated.UserResponse;
+import com.Flyway.server.util.PasswordUtil;
 
 import java.time.ZoneOffset;
 
@@ -14,6 +15,7 @@ import com.Flyway.server.jooq.tables.records.InvitationsRecord;
 import com.Flyway.server.jooq.tables.records.RolesRecord;
 import com.Flyway.server.jooq.tables.records.InvitationStatusesRecord;
 import com.Flyway.server.jooq.tables.records.UsersRecord;
+import com.Flyway.server.jooq.tables.records.UserStatusesRecord;
 import com.Flyway.server.exception.BadRequestException;
 import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ForbiddenException;
@@ -23,8 +25,10 @@ import com.Flyway.server.repository.InvitationStatusRepository;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.RoleRepository;
 import com.Flyway.server.repository.UserRepository;
+import com.Flyway.server.repository.UserStatusRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,10 +45,12 @@ public class InvitationService {
     private final InvitationStatusRepository invitationStatusRepository;
     private final OrganizationMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final UserStatusRepository userStatusRepository;
     private final OrganizationService organizationService;
     private final RoleService roleService;
     private final UserService userService;
     private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
     
     public InvitationResponse getInvitationById(String id) {
         InvitationsRecord invitation = invitationRepository.findById(id)
@@ -74,23 +80,10 @@ public class InvitationService {
     
     @Transactional
     public InvitationResponse createInvitation(String organizationId, CreateInvitationRequest request, String invitedBy) {
-        // Check if user with this email already exists and is in an organization
+        // Check if user with this email already exists
         userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
-            List<?> memberships = memberRepository.findByUserId(user.getId());
-            if (!memberships.isEmpty()) {
-                throw new ConflictException("User with this email is already a member of an organization");
-            }
+            throw new ConflictException("User with this email already exists");
         });
-        
-        // Check if there's already a pending invitation for this email to ANY organization
-        List<InvitationsRecord> existingInvitations = invitationRepository.findByEmail(request.getEmail());
-        for (InvitationsRecord existing : existingInvitations) {
-            String statusId = existing.getInvitationStatusId();
-            InvitationStatusesRecord status = invitationStatusRepository.findById(statusId).orElse(null);
-            if (status != null && "pending".equals(status.getCode())) {
-                throw new ConflictException("User already has a pending invitation to an organization");
-            }
-        }
         
         // Verify role exists and belongs to the organization
         RolesRecord role = roleRepository.findById(request.getRoleId())
@@ -100,17 +93,38 @@ public class InvitationService {
             throw new ConflictException("Role does not belong to this organization");
         }
         
+        // Get active user status
+        UserStatusesRecord activeStatus = userStatusRepository.findByCode("active")
+                .orElseThrow(() -> new RuntimeException("Active status not found"));
+        
+        // Generate random temporary password
+        String tempPassword = PasswordUtil.generateRandomPassword();
+        String passwordHash = passwordEncoder.encode(tempPassword);
+        
+        // Create user with temporary password
+        String userId = userRepository.create(
+                request.getFirstName(),
+                request.getLastName(),
+                request.getEmail(),
+                passwordHash,
+                activeStatus.getId(),
+                true // tempPassword flag
+        );
+        
+        // Add user to organization with the specified role
+        memberRepository.create(organizationId, userId, request.getRoleId());
+        
         // Get pending status
         InvitationStatusesRecord pendingStatus = invitationStatusRepository.findByCode("pending")
                 .orElseThrow(() -> new RuntimeException("Pending status not found"));
         
-        // Generate unique token
+        // Generate unique token for tracking
         String token = UUID.randomUUID().toString();
         
         // Set expiration (7 days from now)
         LocalDateTime expiresAt = LocalDateTime.now().plusDays(7);
         
-        // Create invitation
+        // Create invitation record with pending status
         String invitationId = invitationRepository.create(
                 organizationId,
                 request.getEmail(),
@@ -121,11 +135,13 @@ public class InvitationService {
                 expiresAt
         );
         
+        // TODO: Send email with temporary password to user
+        
         return getInvitationById(invitationId);
     }
     
     @Transactional
-    public InvitationResponse acceptInvitation(String token, String userId) {
+    public InvitationResponse acceptInvitation(String token) {
         InvitationsRecord invitation = invitationRepository.findByToken(token)
                 .orElseThrow(() -> new ResourceNotFoundException("Invitation", "token", token));
         
@@ -148,26 +164,6 @@ public class InvitationService {
             throw new BadRequestException("Invitation has expired");
         }
         
-        // Verify user email matches invitation email
-        UsersRecord user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
-        
-        if (!user.getEmail().equals(invitation.getEmail())) {
-            throw new BadRequestException("User email does not match invitation email");
-        }
-        
-        // Check if user is already in ANY organization (enforce 1 org per user rule)
-        List<?> existingMemberships = memberRepository.findByUserId(userId);
-        if (!existingMemberships.isEmpty()) {
-            throw new ConflictException("You are already a member of an organization. Users can only be in one organization.");
-        }
-        
-        // Add user to organization
-        String organizationId = invitation.getOrganizationId();
-        String roleId = invitation.getRoleId();
-        
-        memberRepository.create(organizationId, userId, roleId);
-        
         // Update invitation status to accepted
         InvitationStatusesRecord acceptedStatus = invitationStatusRepository.findByCode("accepted")
                 .orElseThrow(() -> new RuntimeException("Accepted status not found"));
@@ -181,12 +177,66 @@ public class InvitationService {
         InvitationsRecord invitation = invitationRepository.findByToken(token)
                 .orElseThrow(() -> new ResourceNotFoundException("Invitation", "token", token));
         
+        // Check if invitation is pending
+        String statusId = invitation.getInvitationStatusId();
+        InvitationStatusesRecord status = invitationStatusRepository.findById(statusId)
+                .orElseThrow(() -> new RuntimeException("Status not found"));
+        
+        if (!"pending".equals(status.getCode())) {
+            throw new BadRequestException("Invitation is not pending");
+        }
+        
         // Get rejected status
         InvitationStatusesRecord rejectedStatus = invitationStatusRepository.findByCode("rejected")
                 .orElseThrow(() -> new RuntimeException("Rejected status not found"));
         
         // Update invitation status
         invitationRepository.updateStatus(invitation.getId(), rejectedStatus.getId());
+        
+        return getInvitationById(invitation.getId());
+    }
+    
+    @Transactional
+    public InvitationResponse resendInvitation(String id) {
+        InvitationsRecord invitation = invitationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Invitation", "id", id));
+        
+        // Check if invitation is pending or expired
+        String statusId = invitation.getInvitationStatusId();
+        InvitationStatusesRecord status = invitationStatusRepository.findById(statusId)
+                .orElseThrow(() -> new RuntimeException("Status not found"));
+        
+        if (!"pending".equals(status.getCode()) && !"expired".equals(status.getCode())) {
+            throw new BadRequestException("Cannot resend invitation that has been accepted or rejected");
+        }
+        
+        // Find the user by email to generate new temporary password
+        UsersRecord user = userRepository.findByEmail(invitation.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User", "email", invitation.getEmail()));
+        
+        // Generate new random temporary password
+        String newTempPassword = PasswordUtil.generateRandomPassword();
+        String passwordHash = passwordEncoder.encode(newTempPassword);
+        
+        // Update user with new temporary password
+        userRepository.updatePasswordWithTempFlag(user.getId(), passwordHash, true);
+        
+        // Generate new unique token
+        String newToken = UUID.randomUUID().toString();
+        
+        // Set new expiration (7 days from now)
+        LocalDateTime newExpiresAt = LocalDateTime.now().plusDays(7);
+        
+        // Get pending status
+        InvitationStatusesRecord pendingStatus = invitationStatusRepository.findByCode("pending")
+                .orElseThrow(() -> new RuntimeException("Pending status not found"));
+        
+        // Update invitation with new token, expiration, and status
+        invitationRepository.updateToken(invitation.getId(), newToken);
+        invitationRepository.updateExpiresAt(invitation.getId(), newExpiresAt);
+        invitationRepository.updateStatus(invitation.getId(), pendingStatus.getId());
+        
+        // TODO: Send email with new temporary password to user
         
         return getInvitationById(invitation.getId());
     }
