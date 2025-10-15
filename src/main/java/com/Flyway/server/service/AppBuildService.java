@@ -1,5 +1,7 @@
 package com.Flyway.server.service;
 
+import com.Flyway.server.dto.generated.BuildResponse;
+import com.Flyway.server.dto.generated.PaginatedBuildResponse;
 import com.Flyway.server.exception.BadRequestException;
 import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ForbiddenException;
@@ -15,10 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.time.ZoneOffset;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,7 +33,7 @@ public class AppBuildService {
     /**
      * Get builds with pagination and sorting
      */
-    public Map<String, Object> getBuilds(
+    public PaginatedBuildResponse getBuilds(
             String organizationId,
             String bundleId,
             int page,
@@ -61,18 +60,17 @@ public class AppBuildService {
                 organizationId, bundleId, size, offset, sort);
         int totalCount = appBuildRepository.countByOrganizationAndBundleId(organizationId, bundleId);
         
-        List<Map<String, Object>> buildResponses = builds.stream()
+        List<BuildResponse> buildResponses = builds.stream()
                 .map(this::mapToBuildResponse)
                 .collect(Collectors.toList());
         
-        Map<String, Object> response = new HashMap<>();
-        response.put("data", buildResponses);
-        response.put("page", page);
-        response.put("size", size);
-        response.put("totalElements", totalCount);
-        response.put("totalPages", (int) Math.ceil((double) totalCount / size));
+        return new PaginatedBuildResponse()
+                .data(buildResponses)
+                .page(page)
+                .size(size)
+                .totalElements(totalCount)
+                .totalPages((int) Math.ceil((double) totalCount / size));
         
-        return response;
     }
     
 
@@ -81,7 +79,7 @@ public class AppBuildService {
      * Upload a new build via API key (no user auth check needed)
      */
     @Transactional
-    public Map<String, Object> uploadBuildViaApiKey(
+    public BuildResponse uploadBuildViaApiKey(
             String organizationId,
             String bundleId,
             String commitHash,
@@ -189,22 +187,22 @@ public class AppBuildService {
     /**
      * Map database record to response DTO
      */
-    private Map<String, Object> mapToBuildResponse(AppBuildsRecord record) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", record.getId());
-        response.put("organizationId", record.getOrganizationId());
-        response.put("bundleId", record.getBundleId());
-        response.put("commitHash", record.getCommitHash());
-        response.put("branchName", record.getBranchName());
-        response.put("commitMessage", record.getCommitMessage());
-        response.put("buildSize", record.getBuildSize());
-        response.put("buildUrl", record.getBuildUrl());
-        response.put("nativeVersion", record.getNativeVersion());
-        response.put("uploadedBy", record.getUploadedBy());
-        response.put("createdAt", Date.from(record.getCreatedAt().toInstant(ZoneOffset.UTC)));
-        response.put("updatedAt", Date.from(record.getUpdatedAt().toInstant(ZoneOffset.UTC)));
-        return response;
+    private BuildResponse mapToBuildResponse(AppBuildsRecord record) {
+        return new BuildResponse()
+                .id(record.getId())
+                .organizationId(record.getOrganizationId())
+                .bundleId(record.getBundleId())
+                .commitHash(record.getCommitHash())
+                .branchName(record.getBranchName())
+                .commitMessage(record.getCommitMessage())
+                .buildSize(record.getBuildSize())
+                .buildUrl(record.getBuildUrl())
+                .nativeVersion(record.getNativeVersion())
+                .uploadedBy(record.getUploadedBy())
+                .createdAt(record.getCreatedAt().atOffset(ZoneOffset.UTC))
+                .updatedAt(record.getUpdatedAt().atOffset(ZoneOffset.UTC));
     }
+      
     
     /**
      * Extract file path from URL for deletion

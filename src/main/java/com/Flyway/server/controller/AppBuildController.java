@@ -1,5 +1,8 @@
 package com.Flyway.server.controller;
 
+import com.Flyway.server.dto.generated.ApiKeyResponse;
+import com.Flyway.server.dto.generated.BuildResponse;
+import com.Flyway.server.dto.generated.PaginatedBuildResponse;
 import com.Flyway.server.exception.BadRequestException;
 import com.Flyway.server.security.CustomUserDetails;
 import com.Flyway.server.security.RequirePermission;
@@ -14,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -37,7 +39,7 @@ public class AppBuildController {
      * @param file The build file (APK/IPA)
      */
     @PostMapping(value = "/api/v1/builds", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> uploadBuild(
+    public ResponseEntity<BuildResponse> uploadBuild(
             @RequestHeader(value = "X-API-Key", required = false) String apiKey,
             @RequestParam String commitHash,
             @RequestParam String branchName,
@@ -51,14 +53,14 @@ public class AppBuildController {
         }
         
         // Direct lookup of API key
-        Map<String, Object> apiKeyData = apiKeyService.lookupApiKey(apiKey);
+        ApiKeyResponse apiKeyData = apiKeyService.lookupApiKey(apiKey);
         
-        String bundleId = (String) apiKeyData.get("bundleId");
-        String organizationId = (String) apiKeyData.get("organizationId");
-        String createdBy = (String) apiKeyData.get("createdBy");
+        String bundleId = apiKeyData.getBundleId();
+        String organizationId = apiKeyData.getOrganizationId();
+        String createdBy = apiKeyData.getCreatedBy();
         
         // Upload the build (using the user who created the API key as uploaded_by)
-        Map<String, Object> response = appBuildService.uploadBuildViaApiKey(
+        BuildResponse response = appBuildService.uploadBuildViaApiKey(
                 organizationId,
                 bundleId,
                 commitHash,
@@ -83,7 +85,7 @@ public class AppBuildController {
      */
     @GetMapping("/api/{orgId}/{bundleId}/builds")
     @RequirePermission("build.view")
-    public ResponseEntity<Map<String, Object>> getBuilds(
+    public ResponseEntity<PaginatedBuildResponse> getBuilds(
             @PathVariable String orgId,
             @PathVariable String bundleId,
             @RequestParam(defaultValue = "0") int page,
@@ -91,7 +93,7 @@ public class AppBuildController {
             @RequestParam(defaultValue = "desc") String sort,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         
-        Map<String, Object> response = appBuildService.getBuilds(
+        PaginatedBuildResponse response = appBuildService.getBuilds(
                 orgId,
                 bundleId,
                 page,
