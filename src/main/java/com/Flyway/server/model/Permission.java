@@ -57,7 +57,13 @@ public enum Permission {
     // API Key permissions (bits 31-34)
     API_KEY_VIEW("api_key.view", "View API Keys", "Can view API keys", "api_key", 1L << 31),
     API_KEY_CREATE("api_key.create", "Create API Keys", "Can create new API keys", "api_key", 1L << 32),
-    API_KEY_DELETE("api_key.delete", "Delete API Keys", "Can delete API keys", "api_key", 1L << 33);
+    API_KEY_DELETE("api_key.delete", "Delete API Keys", "Can delete API keys", "api_key", 1L << 33),
+    
+    // Channel permissions (bits 34-37)
+    CHANNEL_VIEW("channel.view", "View Channels", "Can view channels", "channel", 1L << 34),
+    CHANNEL_CREATE("channel.create", "Create Channels", "Can create new channels", "channel", 1L << 35),
+    CHANNEL_UPDATE("channel.update", "Update Channels", "Can update channels", "channel", 1L << 36),
+    CHANNEL_DELETE("channel.delete", "Delete Channels", "Can delete channels", "channel", 1L << 37);
     
     private final String code;
     private final String label;
