@@ -12,3 +12,5 @@ alwaysApply: true
 6. STOP CREAETING .md files until you are asked to 
 7. when dealing with openapi, check the file swagger-ts.md
 8. prefix and response with Paginated if the endpoint returns paginated data
+9. when adding new permissions, update the current roles' permissions in the db in a new migration file
+10. use docker to connect to myql if you want to run some queries 

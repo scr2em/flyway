@@ -47,7 +47,12 @@ public enum Permission {
     MOBILE_APP_READ("mobile_app.read", "View Mobile Apps", "Can view mobile applications", "mobile_app", 1L << 24),
     MOBILE_APP_CREATE("mobile_app.create", "Create Mobile Apps", "Can create new mobile applications", "mobile_app", 1L << 25),
     MOBILE_APP_UPDATE("mobile_app.update", "Update Mobile Apps", "Can update mobile applications", "mobile_app", 1L << 26),
-    MOBILE_APP_DELETE("mobile_app.delete", "Delete Mobile Apps", "Can delete mobile applications", "mobile_app", 1L << 27);
+    MOBILE_APP_DELETE("mobile_app.delete", "Delete Mobile Apps", "Can delete mobile applications", "mobile_app", 1L << 27),
+    
+    // Build permissions (bits 28-30)
+    BUILD_VIEW("build.view", "View Builds", "Can view application builds", "build", 1L << 28),
+    BUILD_UPLOAD("build.upload", "Upload Builds", "Can upload new builds", "build", 1L << 29),
+    BUILD_DELETE("build.delete", "Delete Builds", "Can delete builds", "build", 1L << 30);
     
     private final String code;
     private final String label;

@@ -217,7 +217,7 @@ public class PermissionUtil {
     
     /**
      * Get Admin role permissions - All permissions except billing management
-     * Can manage team, roles, deployments, mobile apps, and view billing
+     * Can manage team, roles, deployments, mobile apps, builds, and view billing
      * @return Permission value for Admin role
      */
     public static long getAdminPermissions() {
@@ -246,13 +246,16 @@ public class PermissionUtil {
             Permission.MOBILE_APP_READ,
             Permission.MOBILE_APP_CREATE,
             Permission.MOBILE_APP_UPDATE,
-            Permission.MOBILE_APP_DELETE
+            Permission.MOBILE_APP_DELETE,
+            Permission.BUILD_VIEW,
+            Permission.BUILD_UPLOAD,
+            Permission.BUILD_DELETE
         );
     }
     
     /**
      * Get Developer role permissions - Can deploy and manage app updates
-     * Focused on deployment operations and mobile app management with read access to organization
+     * Focused on deployment operations, mobile app management, and build uploads with read access to organization
      * @return Permission value for Developer role
      */
     public static long getDeveloperPermissions() {
@@ -267,7 +270,10 @@ public class PermissionUtil {
             Permission.MOBILE_APP_READ,
             Permission.MOBILE_APP_CREATE,
             Permission.MOBILE_APP_UPDATE,
-            Permission.MOBILE_APP_DELETE
+            Permission.MOBILE_APP_DELETE,
+            Permission.BUILD_VIEW,
+            Permission.BUILD_UPLOAD,
+            Permission.BUILD_DELETE
         );
     }
     
@@ -286,7 +292,8 @@ public class PermissionUtil {
             Permission.USER_UPDATE,
             Permission.DEPLOYMENT_VIEW,
             Permission.BILLING_VIEW,
-            Permission.MOBILE_APP_READ
+            Permission.MOBILE_APP_READ,
+            Permission.BUILD_VIEW
         );
     }
     
@@ -304,7 +311,8 @@ public class PermissionUtil {
             Permission.USER_UPDATE,
             Permission.USER_DELETE,
             Permission.DEPLOYMENT_VIEW,
-            Permission.MOBILE_APP_READ
+            Permission.MOBILE_APP_READ,
+            Permission.BUILD_VIEW
         );
     }
 }

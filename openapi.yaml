@@ -24,6 +24,8 @@ tags:
     description: Organization member management operations
   - name: Mobile Applications
     description: Mobile application management operations
+  - name: Builds
+    description: Build management operations
 
 components:
   schemas:
@@ -487,6 +489,85 @@ components:
           type: string
           format: date-time
           description: When the application was last updated
+
+    BuildResponse:
+      type: object
+      description: Build information
+      required:
+        - organizationId
+        - bundleId
+        - commitHash
+        - branchName
+        - buildSize
+        - buildUrl
+        - nativeVersion
+        - uploadedBy
+        - createdAt
+      properties:
+        organizationId:
+          type: string
+          description: Organization ID
+        bundleId:
+          type: string
+          description: Bundle identifier for the mobile application
+        commitHash:
+          type: string
+          description: Git commit hash (unique identifier)
+        branchName:
+          type: string
+          description: Git branch name
+        commitMessage:
+          type: string
+          description: Git commit message
+        buildSize:
+          type: integer
+          format: int64
+          description: Build file size in bytes
+        buildUrl:
+          type: string
+          description: URL to download the build file
+        nativeVersion:
+          type: string
+          description: Native app version (e.g., "1.0.0")
+        uploadedBy:
+          type: string
+          description: User ID who uploaded the build
+        createdAt:
+          type: string
+          format: date-time
+          description: When the build was uploaded
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the build was last updated
+
+    PaginatedBuildResponse:
+      type: object
+      description: Paginated build response
+      required:
+        - data
+        - page
+        - size
+        - totalElements
+        - totalPages
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BuildResponse'
+          description: Array of builds for this page
+        page:
+          type: integer
+          description: Current page number
+        size:
+          type: integer
+          description: Items per page
+        totalElements:
+          type: integer
+          description: Total number of builds
+        totalPages:
+          type: integer
+          description: Total number of pages
 
     PermissionResponse:
       type: object
@@ -1383,6 +1464,164 @@ paths:
       responses:
         '204':
           description: Mobile application deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /{orgId}/{bundleId}/builds:
+    get:
+      operationId: getBuilds
+      summary: Get builds with pagination and sorting
+      tags:
+        - Builds
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Bundle ID of the mobile application
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Page number (default 0)
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+          description: Page size (default 20)
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort direction by createdAt (default desc)
+      responses:
+        '200':
+          description: Builds retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedBuildResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+    
+    post:
+      operationId: uploadBuild
+      summary: Upload a new build
+      tags:
+        - Builds
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Bundle ID of the mobile application
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - commitHash
+                - branchName
+                - nativeVersion
+                - file
+              properties:
+                commitHash:
+                  type: string
+                  description: Git commit hash (unique identifier for the build)
+                branchName:
+                  type: string
+                  description: Git branch name
+                commitMessage:
+                  type: string
+                  description: Git commit message
+                nativeVersion:
+                  type: string
+                  description: Native app version (e.g., "1.0.0")
+                file:
+                  type: string
+                  format: binary
+                  description: The build file (APK/IPA, max 30MB)
+      responses:
+        '201':
+          description: Build uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /{orgId}/{bundleId}/builds/{commitHash}:
+    delete:
+      operationId: deleteBuild
+      summary: Delete a build
+      tags:
+        - Builds
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Bundle ID of the mobile application
+        - name: commitHash
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The commit hash of the build to delete
+      responses:
+        '204':
+          description: Build deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':

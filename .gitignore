@@ -52,3 +52,6 @@ src/main/java/com/Flyway/Flyway/jooq/
 
 # OpenAPI Generated DTOs (in target/generated-sources/openapi/)
 # Already covered by target/ above, but documented here for clarity
+
+### Storage ###
+storage/
