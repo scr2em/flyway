@@ -1,5 +1,7 @@
 package com.Flyway.server.service;
 
+import com.Flyway.server.dto.generated.ApiKeyResponse;
+import com.Flyway.server.dto.generated.PaginatedApiKeyResponse;
 import com.Flyway.server.exception.BadRequestException;
 import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
@@ -32,7 +34,7 @@ public class ApiKeyService {
      * Create a new API key
      */
     @Transactional
-    public Map<String, Object> createApiKey(
+    public ApiKeyResponse createApiKey(
             String name,
             String bundleId,
             String organizationId,
@@ -79,85 +81,72 @@ public class ApiKeyService {
         );
         
         // Return the response with the plain API key (only time it will be visible)
-        Map<String, Object> response = mapToApiKeyResponse(record);
-        response.put("key", apiKey); // Include the plain key only on creation
+        ApiKeyResponse response = mapToApiKeyResponse(record);
+        response.key(apiKey); // Include the plain key only on creation
         
         return response;
+
     }
     
+ 
+    
     /**
-     * Get all API keys for a bundle ID and organization
+     * Get API keys with pagination and sorting
      */
-    public List<Map<String, Object>> getApiKeysByBundleId(
+    public PaginatedApiKeyResponse getApiKeysByBundleIdPaginated(
             String bundleId,
             String organizationId,
+            int page,
+            int size,
+            String sort,
             String authenticatedUserOrgId) {
         
         // Validate that the user has access to this organization
         if (!organizationId.equals(authenticatedUserOrgId)) {
             throw new ForbiddenException("You do not have access to this organization");
+        }
+        
+        // Validate sort parameter
+        if (!sort.equalsIgnoreCase("asc") && !sort.equalsIgnoreCase("desc")) {
+            throw new BadRequestException("Sort parameter must be either 'asc' or 'desc'");
         }
         
         // Verify the app belongs to the organization
         verifyAppBelongsToOrganization(bundleId, organizationId);
         
-        List<ApiKeysRecord> apiKeys = apiKeyRepository.findByBundleIdAndOrganizationId(bundleId, organizationId);
+        int offset = page * size;
         
-        return apiKeys.stream()
+        List<ApiKeysRecord> apiKeys = apiKeyRepository.findByBundleIdAndOrganizationId(
+                bundleId, organizationId, size, offset, sort);
+        int totalCount = apiKeyRepository.countByBundleIdAndOrganizationId(bundleId, organizationId);
+        
+        List<ApiKeyResponse> apiKeyResponses = apiKeys.stream()
                 .map(this::mapToApiKeyResponse)
                 .collect(Collectors.toList());
+        
+    
+        
+        return new PaginatedApiKeyResponse()
+                .data(apiKeyResponses)
+                .page(page)
+                .size(size)
+                .totalElements(totalCount)
+                .totalPages((int) Math.ceil((double) totalCount / size));
     }
     
-    /**
-     * Get all API keys for an organization
-     */
-    public List<Map<String, Object>> getApiKeysByOrganizationId(
-            String organizationId,
-            String authenticatedUserOrgId) {
-        
-        // Validate that the user has access to this organization
-        if (!organizationId.equals(authenticatedUserOrgId)) {
-            throw new ForbiddenException("You do not have access to this organization");
-        }
-        
-        List<ApiKeysRecord> apiKeys = apiKeyRepository.findByOrganizationId(organizationId);
-        
-        return apiKeys.stream()
-                .map(this::mapToApiKeyResponse)
-                .collect(Collectors.toList());
-    }
-    
-    /**
-     * Delete an API key
-     */
     @Transactional
-    public void deleteApiKey(
-            String id,
-            String organizationId,
-            String authenticatedUserOrgId) {
+    public void deleteApiKey(String id) {
         
-        // Validate that the user has access to this organization
-        if (!organizationId.equals(authenticatedUserOrgId)) {
-            throw new ForbiddenException("You do not have access to this organization");
+        if (apiKeyRepository.delete(id) == 0) {
+            throw new ResourceNotFoundException("API key not found");
         }
-        
-        // Find the API key
-        ApiKeysRecord apiKey = apiKeyRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("API key not found"));
-        
-        // Verify it belongs to the organization
-        if (!apiKey.getOrganizationId().equals(organizationId)) {
-            throw new ForbiddenException("You do not have access to this API key");
-        }
-        
-        // Delete the API key
-        apiKeyRepository.delete(id);
+
     }
     
     /**
      * Direct lookup of API key by exact value
      */
-    public Map<String, Object> lookupApiKey(String apiKey) {
+    public ApiKeyResponse lookupApiKey(String apiKey) {
         if (apiKey == null || apiKey.isEmpty()) {
             throw new BadRequestException("API key is required");
         }
@@ -188,14 +177,7 @@ public class ApiKeyService {
         // Update last used timestamp
         apiKeyRepository.updateLastUsedAt(apiKeyRecord.getId());
         
-        Map<String, Object> result = new HashMap<>();
-        result.put("id", apiKeyRecord.getId());
-        result.put("bundleId", apiKeyRecord.getBundleId());
-        result.put("organizationId", apiKeyRecord.getOrganizationId());
-        result.put("name", apiKeyRecord.getName());
-        result.put("createdBy", apiKeyRecord.getCreatedBy());
-        
-        return result;
+        return mapToApiKeyResponse(apiKeyRecord);
     }
     
     /**
@@ -215,21 +197,17 @@ public class ApiKeyService {
     /**
      * Map API key record to response
      */
-    private Map<String, Object> mapToApiKeyResponse(ApiKeysRecord record) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("id", record.getId());
-        response.put("name", record.getName());
-        response.put("keyPrefix", maskApiKey(record.getKeyPrefix()));
-        response.put("bundleId", record.getBundleId());
-        response.put("organizationId", record.getOrganizationId());
-        response.put("createdBy", record.getCreatedBy());
-        response.put("lastUsedAt", record.getLastUsedAt() != null 
-                ? Date.from(record.getLastUsedAt().toInstant(ZoneOffset.UTC)) 
-                : null);
-        response.put("createdAt", Date.from(record.getCreatedAt().toInstant(ZoneOffset.UTC)));
-        response.put("updatedAt", Date.from(record.getUpdatedAt().toInstant(ZoneOffset.UTC)));
-        
-        return response;
+    private ApiKeyResponse mapToApiKeyResponse(ApiKeysRecord record) {
+      
+        return new ApiKeyResponse().id(record.getId())
+                .name(record.getName())
+                .keyPrefix(maskApiKey(record.getKeyPrefix()))
+                .bundleId(record.getBundleId())
+                .organizationId(record.getOrganizationId())
+                .createdBy(record.getCreatedBy())
+                .lastUsedAt(record.getLastUsedAt() != null ? record.getLastUsedAt().atOffset(ZoneOffset.UTC) : null)
+                .createdAt(record.getCreatedAt().atOffset(ZoneOffset.UTC))
+                .updatedAt(record.getUpdatedAt().atOffset(ZoneOffset.UTC));
     }
     
     /**

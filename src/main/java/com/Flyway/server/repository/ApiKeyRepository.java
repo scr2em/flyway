@@ -3,6 +3,7 @@ package com.Flyway.server.repository;
 import com.Flyway.server.jooq.tables.records.ApiKeysRecord;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
+import org.jooq.SortField;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -64,6 +65,40 @@ public class ApiKeyRepository {
                         .and(API_KEYS.ORGANIZATION_ID.eq(organizationId)))
                 .orderBy(API_KEYS.CREATED_AT.desc())
                 .fetch();
+    }
+    
+    /**
+     * Find API keys by bundle ID and organization with pagination and sorting
+     */
+    public List<ApiKeysRecord> findByBundleIdAndOrganizationId(
+            String bundleId, 
+            String organizationId,
+            int limit,
+            int offset,
+            String sortDirection) {
+        
+        SortField<?> sortField = sortDirection.equalsIgnoreCase("asc") 
+                ? API_KEYS.CREATED_AT.asc() 
+                : API_KEYS.CREATED_AT.desc();
+        
+        return dsl.selectFrom(API_KEYS)
+                .where(API_KEYS.BUNDLE_ID.eq(bundleId)
+                        .and(API_KEYS.ORGANIZATION_ID.eq(organizationId)))
+                .orderBy(sortField)
+                .limit(limit)
+                .offset(offset)
+                .fetch();
+    }
+    
+    /**
+     * Count API keys by bundle ID and organization
+     */
+    public int countByBundleIdAndOrganizationId(String bundleId, String organizationId) {
+        return dsl.fetchCount(
+                dsl.selectFrom(API_KEYS)
+                        .where(API_KEYS.BUNDLE_ID.eq(bundleId)
+                                .and(API_KEYS.ORGANIZATION_ID.eq(organizationId)))
+        );
     }
     
     /**

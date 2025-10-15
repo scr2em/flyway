@@ -575,6 +575,34 @@ components:
           type: integer
           description: Total number of pages
 
+    PaginatedApiKeyResponse:
+      type: object
+      description: Paginated API key response
+      required:
+        - data
+        - page
+        - size
+        - totalElements
+        - totalPages
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiKeyResponse'
+          description: Array of API keys for this page
+        page:
+          type: integer
+          description: Current page number
+        size:
+          type: integer
+          description: Items per page
+        totalElements:
+          type: integer
+          description: Total number of API keys
+        totalPages:
+          type: integer
+          description: Total number of pages
+
     CreateApiKeyRequest:
       type: object
       description: Request to create an API key
@@ -1745,7 +1773,7 @@ paths:
   /{orgId}/{bundleId}/api-keys:
     get:
       operationId: getApiKeys
-      summary: Get all API keys for a bundle
+      summary: Get API keys with pagination and sorting
       tags:
         - API Keys
       security:
@@ -1763,15 +1791,41 @@ paths:
           schema:
             type: string
           description: Bundle ID of the mobile application
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Page number (default 0)
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+          description: Page size (default 20)
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort direction by createdAt (default desc)
       responses:
         '200':
           description: API keys retrieved successfully
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ApiKeyResponse'
+                $ref: '#/components/schemas/PaginatedApiKeyResponse'
+        '400':
+          description: Bad request (e.g., invalid sort parameter)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':
