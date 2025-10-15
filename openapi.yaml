@@ -26,6 +26,8 @@ tags:
     description: Mobile application management operations
   - name: Builds
     description: Build management operations
+  - name: API Keys
+    description: API key management for build uploads
 
 components:
   schemas:
@@ -494,6 +496,7 @@ components:
       type: object
       description: Build information
       required:
+        - id
         - organizationId
         - bundleId
         - commitHash
@@ -504,6 +507,9 @@ components:
         - uploadedBy
         - createdAt
       properties:
+        id:
+          type: string
+          description: Unique UUID identifier for the build
         organizationId:
           type: string
           description: Organization ID
@@ -568,6 +574,66 @@ components:
         totalPages:
           type: integer
           description: Total number of pages
+
+    CreateApiKeyRequest:
+      type: object
+      description: Request to create an API key
+      required:
+        - name
+        - bundleId
+      properties:
+        name:
+          type: string
+          description: Name/description for the API key
+        bundleId:
+          type: string
+          description: Bundle ID of the mobile application
+
+    ApiKeyResponse:
+      type: object
+      description: API key information
+      required:
+        - id
+        - name
+        - keyPrefix
+        - bundleId
+        - organizationId
+        - createdBy
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the API key
+        name:
+          type: string
+          description: Name/description of the API key
+        key:
+          type: string
+          description: The actual API key (only returned on creation)
+        keyPrefix:
+          type: string
+          description: Masked key display (e.g., "flyw...xyz")
+        bundleId:
+          type: string
+          description: Bundle ID this key is for
+        organizationId:
+          type: string
+          description: Organization ID
+        createdBy:
+          type: string
+          description: User ID who created the key
+        lastUsedAt:
+          type: string
+          format: date-time
+          description: When the key was last used
+        createdAt:
+          type: string
+          format: date-time
+          description: When the key was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the key was last updated
 
     PermissionResponse:
       type: object
@@ -1531,6 +1597,8 @@ paths:
     post:
       operationId: uploadBuild
       summary: Upload a new build
+      deprecated: true
+      description: "DEPRECATED: This endpoint has been removed. Use the API key-based upload endpoint at /v1/builds instead."
       tags:
         - Builds
       security:
@@ -1592,12 +1660,94 @@ paths:
         '409':
           $ref: '#/components/responses/ConflictError'
 
-  /{orgId}/{bundleId}/builds/{commitHash}:
+  /builds/{buildId}:
     delete:
       operationId: deleteBuild
-      summary: Delete a build
+      summary: Delete a build by its UUID
       tags:
         - Builds
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: buildId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The UUID of the build to delete
+      responses:
+        '204':
+          description: Build deleted successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /v1/builds:
+    post:
+      operationId: uploadBuildWithApiKey
+      summary: Upload a new build using API key authentication
+      description: "Upload builds using API key authentication. This is the only way to upload builds and is designed for CI/CD pipelines. Requires X-API-Key header instead of JWT token."
+      tags:
+        - Builds
+        - API Keys
+      parameters:
+        - name: X-API-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: API key for authentication (e.g., "flyway_abc123...")
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - commitHash
+                - branchName
+                - nativeVersion
+                - file
+              properties:
+                commitHash:
+                  type: string
+                  description: Git commit hash (unique identifier for the build)
+                branchName:
+                  type: string
+                  description: Git branch name
+                commitMessage:
+                  type: string
+                  description: Git commit message
+                nativeVersion:
+                  type: string
+                  description: Native app version (e.g., "1.0.0")
+                file:
+                  type: string
+                  format: binary
+                  description: The build file (APK/IPA, max 30MB)
+      responses:
+        '201':
+          description: Build uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /{orgId}/{bundleId}/api-keys:
+    get:
+      operationId: getApiKeys
+      summary: Get all API keys for a bundle
+      tags:
+        - API Keys
       security:
         - BearerAuth: []
       parameters:
@@ -1613,15 +1763,94 @@ paths:
           schema:
             type: string
           description: Bundle ID of the mobile application
-        - name: commitHash
+      responses:
+        '200':
+          description: API keys retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiKeyResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    
+    post:
+      operationId: createApiKey
+      summary: Create a new API key
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: orgId
           in: path
           required: true
           schema:
             type: string
-          description: The commit hash of the build to delete
+          description: Organization ID
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Bundle ID of the mobile application
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Name/description for the API key
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiKeyResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /{orgId}/{bundleId}/api-keys/{keyId}:
+    delete:
+      operationId: deleteApiKey
+      summary: Delete an API key
+      tags:
+        - API Keys
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization ID
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Bundle ID of the mobile application
+        - name: keyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: API key ID
       responses:
         '204':
-          description: Build deleted successfully
+          description: API key deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':

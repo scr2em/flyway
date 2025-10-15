@@ -52,7 +52,12 @@ public enum Permission {
     // Build permissions (bits 28-30)
     BUILD_VIEW("build.view", "View Builds", "Can view application builds", "build", 1L << 28),
     BUILD_UPLOAD("build.upload", "Upload Builds", "Can upload new builds", "build", 1L << 29),
-    BUILD_DELETE("build.delete", "Delete Builds", "Can delete builds", "build", 1L << 30);
+    BUILD_DELETE("build.delete", "Delete Builds", "Can delete builds", "build", 1L << 30),
+    
+    // API Key permissions (bits 31-34)
+    API_KEY_VIEW("api_key.view", "View API Keys", "Can view API keys", "api_key", 1L << 31),
+    API_KEY_CREATE("api_key.create", "Create API Keys", "Can create new API keys", "api_key", 1L << 32),
+    API_KEY_DELETE("api_key.delete", "Delete API Keys", "Can delete API keys", "api_key", 1L << 33);
     
     private final String code;
     private final String label;

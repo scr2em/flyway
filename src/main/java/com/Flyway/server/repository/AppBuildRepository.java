@@ -4,12 +4,12 @@ import com.Flyway.server.jooq.tables.records.AppBuildsRecord;
 import lombok.RequiredArgsConstructor;
 import org.jooq.DSLContext;
 import org.jooq.SortField;
-import org.jooq.SortOrder;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static com.Flyway.server.jooq.tables.AppBuilds.APP_BUILDS;
 
@@ -18,6 +18,15 @@ import static com.Flyway.server.jooq.tables.AppBuilds.APP_BUILDS;
 public class AppBuildRepository {
     
     private final DSLContext dsl;
+    
+    /**
+     * Find a build by its UUID
+     */
+    public Optional<AppBuildsRecord> findById(String id) {
+        return dsl.selectFrom(APP_BUILDS)
+                .where(APP_BUILDS.ID.eq(id))
+                .fetchOptional();
+    }
     
     /**
      * Find a build by organization, bundle ID, and commit hash
@@ -129,7 +138,7 @@ public class AppBuildRepository {
     /**
      * Create a new build
      */
-    public void create(
+    public AppBuildsRecord create(
             String organizationId,
             String bundleId,
             String commitHash,
@@ -141,8 +150,10 @@ public class AppBuildRepository {
             String uploadedBy) {
         
         LocalDateTime now = LocalDateTime.now();
+        String id = UUID.randomUUID().toString();
         
         AppBuildsRecord record = dsl.newRecord(APP_BUILDS);
+        record.setId(id);
         record.setOrganizationId(organizationId);
         record.setBundleId(bundleId);
         record.setCommitHash(commitHash);
@@ -155,6 +166,17 @@ public class AppBuildRepository {
         record.setCreatedAt(now);
         record.setUpdatedAt(now);
         record.store();
+        
+        return record;
+    }
+    
+    /**
+     * Delete a build by its UUID
+     */
+    public int deleteById(String id) {
+        return dsl.deleteFrom(APP_BUILDS)
+                .where(APP_BUILDS.ID.eq(id))
+                .execute();
     }
     
     /**

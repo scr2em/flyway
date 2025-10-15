@@ -75,25 +75,21 @@ public class AppBuildService {
         return response;
     }
     
+
+    
     /**
-     * Upload a new build
+     * Upload a new build via API key (no user auth check needed)
      */
     @Transactional
-    public Map<String, Object> uploadBuild(
+    public Map<String, Object> uploadBuildViaApiKey(
             String organizationId,
             String bundleId,
             String commitHash,
             String branchName,
             String commitMessage,
             String nativeVersion,
-            String userId,
-            MultipartFile file,
-            String authenticatedUserOrgId) throws IOException {
-        
-        // Validate that the user has access to this organization
-        if (!organizationId.equals(authenticatedUserOrgId)) {
-            throw new ForbiddenException("You do not have access to this organization");
-        }
+            String apiKeyId,
+            MultipartFile file) throws IOException {
         
         // Validate file
         if (file.isEmpty()) {
@@ -118,9 +114,10 @@ public class AppBuildService {
                 organizationId, bundleId, commitHash, file.getOriginalFilename());
         String buildUrl = storageService.store(file, filePath);
         
-        // Create the build record
+        // Create the build record (use apiKeyId as uploadedBy to track API key uploads)
+        AppBuildsRecord build;
         try {
-            appBuildRepository.create(
+            build = appBuildRepository.create(
                     organizationId,
                     bundleId,
                     commitHash,
@@ -129,7 +126,7 @@ public class AppBuildService {
                     file.getSize(),
                     buildUrl,
                     nativeVersion,
-                    userId
+                    apiKeyId
             );
         } catch (Exception e) {
             // If database insert fails, clean up the uploaded file
@@ -141,37 +138,32 @@ public class AppBuildService {
             throw e;
         }
         
-        // Fetch and return the created build
-        AppBuildsRecord build = appBuildRepository.findByKey(organizationId, bundleId, commitHash)
-                .orElseThrow(() -> new RuntimeException("Failed to retrieve created build"));
-        
         return mapToBuildResponse(build);
     }
     
     /**
-     * Delete a build
+     * Delete a build by its UUID
      */
     @Transactional
     public void deleteBuild(
-            String organizationId,
-            String bundleId,
-            String commitHash,
+            String buildId,
             String authenticatedUserOrgId) throws IOException {
         
+        // Find the build
+        AppBuildsRecord build = appBuildRepository.findById(buildId)
+                .orElseThrow(() -> new ResourceNotFoundException("Build", "id", buildId));
+        
         // Validate that the user has access to this organization
-        if (!organizationId.equals(authenticatedUserOrgId)) {
+        if (!build.getOrganizationId().equals(authenticatedUserOrgId)) {
             throw new ForbiddenException("You do not have access to this organization");
         }
         
-        // Verify the app belongs to the organization
-        verifyAppBelongsToOrganization(bundleId, organizationId);
-        
-        // Check if build exists
-        AppBuildsRecord build = appBuildRepository.findByKey(organizationId, bundleId, commitHash)
-                .orElseThrow(() -> new ResourceNotFoundException("Build", "commitHash", commitHash));
-        
         // Delete from storage
-        String filePath = extractFilePathFromUrl(build.getBuildUrl(), organizationId, bundleId, commitHash);
+        String filePath = extractFilePathFromUrl(
+                build.getBuildUrl(), 
+                build.getOrganizationId(), 
+                build.getBundleId(), 
+                build.getCommitHash());
         try {
             storageService.delete(filePath);
         } catch (Exception e) {
@@ -179,7 +171,7 @@ public class AppBuildService {
         }
         
         // Delete from database
-        appBuildRepository.delete(organizationId, bundleId, commitHash);
+        appBuildRepository.deleteById(buildId);
     }
     
     /**
@@ -199,6 +191,7 @@ public class AppBuildService {
      */
     private Map<String, Object> mapToBuildResponse(AppBuildsRecord record) {
         Map<String, Object> response = new HashMap<>();
+        response.put("id", record.getId());
         response.put("organizationId", record.getOrganizationId());
         response.put("bundleId", record.getBundleId());
         response.put("commitHash", record.getCommitHash());

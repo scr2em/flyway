@@ -96,5 +96,13 @@ public class MobileApplicationRepository {
                                 .and(MOBILE_APPLICATIONS.ORGANIZATION_ID.eq(organizationId)))
         );
     }
+    
+    public boolean existsByBundleIdAndOrganizationId(String bundleId, String organizationId) {
+        return dsl.fetchExists(
+                dsl.selectFrom(MOBILE_APPLICATIONS)
+                        .where(MOBILE_APPLICATIONS.BUNDLE_ID.eq(bundleId)
+                                .and(MOBILE_APPLICATIONS.ORGANIZATION_ID.eq(organizationId)))
+        );
+    }
 }
 
