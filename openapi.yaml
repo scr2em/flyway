@@ -240,6 +240,10 @@ components:
           allOf:
             - $ref: '#/components/schemas/UserOrganizationResponse'
           description: Organization information (null if user is not in an organization)
+        role:
+          $ref: '#/components/schemas/RoleResponse'
+          nullable: true
+          description: Role information (null if user is not in an organization)
         invitationStatus:
           $ref: '#/components/schemas/InvitationStatusResponse'
           nullable: true

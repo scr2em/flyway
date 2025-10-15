@@ -3,6 +3,7 @@ package com.Flyway.server.service;
 import com.Flyway.server.dto.generated.UpdateUserRequest;
 import com.Flyway.server.dto.generated.UserResponse;
 import com.Flyway.server.dto.generated.UserResponseOrganization;
+import com.Flyway.server.dto.generated.RoleResponse;
 import com.Flyway.server.dto.generated.UserStatusResponse;
 import com.Flyway.server.dto.generated.UserStatusEnum;
 import com.Flyway.server.dto.generated.InvitationStatusResponse;
@@ -12,6 +13,7 @@ import com.Flyway.server.jooq.tables.records.OrganizationsRecord;
 import com.Flyway.server.jooq.tables.records.UsersRecord;
 import com.Flyway.server.jooq.tables.records.InvitationsRecord;
 import com.Flyway.server.jooq.tables.records.InvitationStatusesRecord;
+import com.Flyway.server.jooq.tables.records.RolesRecord;
 import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
@@ -20,7 +22,9 @@ import com.Flyway.server.repository.UserRepository;
 import com.Flyway.server.repository.UserStatusRepository;
 import com.Flyway.server.repository.InvitationRepository;
 import com.Flyway.server.repository.InvitationStatusRepository;
+import com.Flyway.server.repository.RoleRepository;
 import com.Flyway.server.jooq.tables.records.UserStatusesRecord;
+import com.Flyway.server.util.PermissionUtil;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -42,6 +46,7 @@ public class UserService {
     private final PermissionService permissionService;
     private final InvitationRepository invitationRepository;
     private final InvitationStatusRepository invitationStatusRepository;
+    private final RoleRepository roleRepository;
     
     public UserResponse getUserById(String id) {
         UsersRecord user = userRepository.findById(id)
@@ -170,17 +175,35 @@ public class UserService {
                     .status(statusEnum);
         }
         
-        // Get organization from organization_members table (user can only be in 1 organization)
+        // Get organization and role from organization_members table (user can only be in 1 organization)
         UserResponseOrganization organization = null;
+        RoleResponse role = null;
         List<OrganizationMembersRecord> orgMembers = organizationMemberRepository.findByUserId(userId);
         if (!orgMembers.isEmpty()) {
-            String organizationId = orgMembers.get(0).getOrganizationId();
+            OrganizationMembersRecord orgMember = orgMembers.get(0);
+            String organizationId = orgMember.getOrganizationId();
             OrganizationsRecord orgRecord = organizationRepository.findById(organizationId).orElse(null);
             
             if (orgRecord != null) {
                 organization = new UserResponseOrganization()
                         .id(orgRecord.getId())
                         .name(orgRecord.getName());
+            }
+            
+            // Get role information
+            String roleId = orgMember.getRoleId();
+            if (roleId != null) {
+                RolesRecord roleRecord = roleRepository.findById(roleId).orElse(null);
+                if (roleRecord != null) {
+                    String permissionsValue = PermissionUtil.toPermissionString(roleRecord.getPermissions());
+                    role = new RoleResponse()
+                            .id(roleRecord.getId())
+                            .name(roleRecord.getName())
+                            .description(roleRecord.getDescription())
+                            .permissionsValue(permissionsValue)
+                            .createdAt(roleRecord.getCreatedAt() != null ? roleRecord.getCreatedAt().atOffset(ZoneOffset.UTC) : null)
+                            .updatedAt(roleRecord.getUpdatedAt() != null ? roleRecord.getUpdatedAt().atOffset(ZoneOffset.UTC) : null);
+                }
             }
         }
         
@@ -214,6 +237,7 @@ public class UserService {
                 .email(record.getEmail())
                 .status(statusResponse)
                 .organization(organization)
+                .role(role)
                 .invitationStatus(invitationStatusResponse)
                 .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
                 .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null);
