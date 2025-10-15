@@ -7,25 +7,23 @@ import com.Flyway.server.dto.generated.InvitationStatusEnum;
 import com.Flyway.server.dto.generated.OrganizationResponse;
 import com.Flyway.server.dto.generated.RoleResponse;
 import com.Flyway.server.dto.generated.UserResponse;
-import com.Flyway.server.util.PasswordUtil;
 
 import java.time.ZoneOffset;
 
 import com.Flyway.server.jooq.tables.records.InvitationsRecord;
-import com.Flyway.server.jooq.tables.records.RolesRecord;
 import com.Flyway.server.jooq.tables.records.InvitationStatusesRecord;
 import com.Flyway.server.jooq.tables.records.UsersRecord;
 import com.Flyway.server.jooq.tables.records.UserStatusesRecord;
-import com.Flyway.server.exception.BadRequestException;
-import com.Flyway.server.exception.ConflictException;
-import com.Flyway.server.exception.ForbiddenException;
-import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.InvitationRepository;
 import com.Flyway.server.repository.InvitationStatusRepository;
 import com.Flyway.server.repository.OrganizationMemberRepository;
-import com.Flyway.server.repository.RoleRepository;
 import com.Flyway.server.repository.UserRepository;
 import com.Flyway.server.repository.UserStatusRepository;
+import com.Flyway.server.util.PasswordUtil;
+import com.Flyway.server.exception.ResourceNotFoundException;
+import com.Flyway.server.exception.ConflictException;
+import com.Flyway.server.exception.ForbiddenException;
+import com.Flyway.server.exception.BadRequestException;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -49,7 +47,6 @@ public class InvitationService {
     private final OrganizationService organizationService;
     private final RoleService roleService;
     private final UserService userService;
-    private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     
     public InvitationResponse getInvitationById(String id) {

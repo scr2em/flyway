@@ -1,13 +1,8 @@
 package com.Flyway.server.service;
 
-import com.Flyway.server.dto.generated.CreateRoleRequest;
-import com.Flyway.server.dto.generated.UpdateRoleRequest;
-import com.Flyway.server.dto.generated.PermissionResponse;
 import com.Flyway.server.dto.generated.RoleResponse;
 import com.Flyway.server.jooq.tables.records.RolesRecord;
-import com.Flyway.server.exception.BadRequestException;
 import com.Flyway.server.exception.ConflictException;
-import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.RoleRepository;
@@ -28,7 +23,6 @@ public class RoleService {
     
     private final RoleRepository roleRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
-    private final PermissionService permissionService;
     
     public RoleResponse getRoleById(String id) {
         RolesRecord role = roleRepository.findById(id)
@@ -43,44 +37,7 @@ public class RoleService {
                 .collect(Collectors.toList());
     }
     
-    @Transactional
-    public RoleResponse createRole(CreateRoleRequest request) {
-        // Check if role name already exists (roles are now global)
-        roleRepository.findByName(request.getName())
-                .ifPresent(r -> {
-                    throw new ConflictException("Role with name '" + request.getName() + "' already exists");
-                });
-        
-        // Parse permissions from string
-        long permissions = PermissionUtil.parsePermissionString(request.getPermissions());
-        
-        // Create role
-        String roleId = roleRepository.create(
-            request.getName(), 
-            request.getDescription(),
-            permissions
-        );
-        
-        return getRoleById(roleId);
-    }
-    
-    @Transactional
-    public RoleResponse updateRole(String id, UpdateRoleRequest request) {
-        roleRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", id));
-        
-        // Parse permissions if provided
-        Long permissions = null;
-        if (request.getPermissions() != null) {
-            permissions = PermissionUtil.parsePermissionString(request.getPermissions());
-        }
-        
-        // Update role
-        roleRepository.update(id, request.getName(), request.getDescription(), permissions);
-        
-        return getRoleById(id);
-    }
-    
+
     @Transactional
     public void deleteRole(String id) {
         roleRepository.findById(id)
@@ -97,9 +54,6 @@ public class RoleService {
     private RoleResponse mapToRoleResponse(RolesRecord record) {
         String roleId = record.getId();
         
-        // Fetch permissions for this role
-        List<PermissionResponse> permissions = permissionService.getPermissionsForRole(roleId);
-        
         // Convert LocalDateTime to OffsetDateTime
         LocalDateTime createdAtLocal = record.getCreatedAt();
         LocalDateTime updatedAtLocal = record.getUpdatedAt();
@@ -112,7 +66,6 @@ public class RoleService {
                 .name(record.getName())
                 .description(record.getDescription())
                 .permissionsValue(permissionsValue)
-                .permissions(permissions)
                 .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
                 .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null);
     }

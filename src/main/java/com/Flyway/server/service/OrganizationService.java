@@ -9,7 +9,6 @@ import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.OrganizationRepository;
 import com.Flyway.server.repository.RoleRepository;
-import com.Flyway.server.util.PermissionUtil;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
