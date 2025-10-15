@@ -68,7 +68,7 @@ public class ApiKeyController {
         
         ApiKeyResponse response = apiKeyService.createApiKey(
                 request.getName(),
-                request.getBundleId(),
+                bundleId,
                 orgId,
                 userDetails.getId(),
                 userDetails.getOrganizationId()

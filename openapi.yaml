@@ -608,14 +608,10 @@ components:
       description: Request to create an API key
       required:
         - name
-        - bundleId
       properties:
         name:
           type: string
           description: Name/description for the API key
-        bundleId:
-          type: string
-          description: Bundle ID of the mobile application
 
     ApiKeyResponse:
       type: object
@@ -1853,12 +1849,12 @@ paths:
           schema:
             type: string
           description: Bundle ID of the mobile application
-        - name: name
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Name/description for the API key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiKeyRequest'
       responses:
         '201':
           description: API key created successfully
