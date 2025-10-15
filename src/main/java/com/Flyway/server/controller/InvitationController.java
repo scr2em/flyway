@@ -57,14 +57,12 @@ public class InvitationController {
     }
     
     // Private endpoint - requires invitation.create permission
-    @PostMapping("/{id}/resend")
+    @PostMapping("/users/{userId}/resend")
     @RequirePermission("invitation.create")
     public ResponseEntity<InvitationResponse> resendInvitation(
-            @PathVariable String id,
+            @PathVariable String userId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        // Verify invitation belongs to user's organization
-        invitationService.verifyInvitationOwnership(id, userDetails.getOrganizationId());
-        InvitationResponse invitation = invitationService.resendInvitation(id);
+        InvitationResponse invitation = invitationService.resendInvitationByUserId(userId, userDetails.getOrganizationId());
         return ResponseEntity.ok(invitation);
     }
 }

@@ -48,6 +48,7 @@ public class InvitationService {
     private final RoleService roleService;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
     
     public InvitationResponse getInvitationById(String id) {
         InvitationsRecord invitation = invitationRepository.findById(id)
@@ -124,7 +125,18 @@ public class InvitationService {
                 expiresAt
         );
         
-        // TODO: Send email with temporary password to user
+        // Get organization details for the email
+        OrganizationResponse organization = organizationService.getOrganizationById(organizationId);
+        
+        // Send invitation email with temporary password
+        emailService.sendInvitationEmail(
+                request.getEmail(),
+                request.getFirstName(),
+                request.getLastName(),
+                organization.getName(),
+                tempPassword,
+                token
+        );
         
         return getInvitationById(invitationId);
     }
@@ -186,6 +198,26 @@ public class InvitationService {
     }
     
     @Transactional
+    public InvitationResponse resendInvitationByUserId(String userId, String organizationId) {
+        // Find the user by ID
+        UsersRecord user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
+        
+        // Verify user is in the organization
+        memberRepository.findByOrganizationIdAndUserId(organizationId, userId)
+                .orElseThrow(() -> new ForbiddenException("User is not a member of your organization"));
+        
+        // Find the invitation by email and organization
+        List<InvitationsRecord> invitations = invitationRepository.findByEmail(user.getEmail());
+        InvitationsRecord invitation = invitations.stream()
+                .filter(inv -> inv.getOrganizationId().equals(organizationId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Invitation", "email", user.getEmail()));
+        
+        return resendInvitation(invitation.getId());
+    }
+    
+    @Transactional
     public InvitationResponse resendInvitation(String id) {
         InvitationsRecord invitation = invitationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Invitation", "id", id));
@@ -225,7 +257,18 @@ public class InvitationService {
         invitationRepository.updateExpiresAt(invitation.getId(), newExpiresAt);
         invitationRepository.updateStatus(invitation.getId(), pendingStatus.getId());
         
-        // TODO: Send email with new temporary password to user
+        // Get organization details for the email
+        OrganizationResponse organization = organizationService.getOrganizationById(invitation.getOrganizationId());
+        
+        // Send resend invitation email with new temporary password
+        emailService.sendResendInvitationEmail(
+                invitation.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                organization.getName(),
+                newTempPassword,
+                newToken
+        );
         
         return getInvitationById(invitation.getId());
     }

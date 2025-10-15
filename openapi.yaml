@@ -922,17 +922,17 @@ paths:
         '404':
           $ref: '#/components/responses/NotFoundError'
 
-  /invitations/{id}/resend:
+  /invitations/users/{userId}/resend:
     post:
       operationId: resendInvitation
       summary: Resend invitation (private endpoint)
-      description: Resend an invitation - requires invitation.create permission
+      description: Resend an invitation by user ID - requires invitation.create permission
       tags:
         - Invitations
       security:
         - BearerAuth: []
       parameters:
-        - name: id
+        - name: userId
           in: path
           required: true
           schema:
