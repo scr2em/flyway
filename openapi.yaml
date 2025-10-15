@@ -22,6 +22,8 @@ tags:
     description: Invitation management operations
   - name: Organization Members
     description: Organization member management operations
+  - name: Mobile Applications
+    description: Mobile application management operations
 
 components:
   schemas:
@@ -161,6 +163,35 @@ components:
           type: string
           description: New role ID
 
+    CreateMobileApplicationRequest:
+      type: object
+      description: Request to create a new mobile application
+      required:
+        - bundleId
+        - name
+      properties:
+        bundleId:
+          type: string
+          description: Unique bundle identifier for the mobile application (e.g., com.example.app)
+        name:
+          type: string
+          description: Mobile application name
+        description:
+          type: string
+          description: Mobile application description
+
+    UpdateMobileApplicationRequest:
+      type: object
+      description: Request to update a mobile application
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Mobile application name
+        description:
+          type: string
+          description: Mobile application description
 
     UpdateUserRequest:
       type: object
@@ -414,6 +445,70 @@ components:
         itemsPerPage:
           type: integer
           description: Maximum items per page
+
+    MobileApplicationResponse:
+      type: object
+      description: Mobile application information
+      required:
+        - id
+        - bundleId
+        - organizationId
+        - name
+        - createdBy
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Mobile application ID
+        bundleId:
+          type: string
+          description: Bundle identifier for the mobile application
+        organizationId:
+          type: string
+          description: Organization ID that owns this application
+        name:
+          type: string
+          description: Mobile application name
+        description:
+          type: string
+          description: Mobile application description
+        createdBy:
+          type: string
+          description: User ID who created the application
+        createdAt:
+          type: string
+          format: date-time
+          description: When the application was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the application was last updated
+
+    PermissionResponse:
+      type: object
+      description: Permission information
+      required:
+        - code
+        - label
+        - description
+        - category
+        - bitValue
+      properties:
+        code:
+          type: string
+          description: Permission code (e.g., "organization.update")
+        label:
+          type: string
+          description: Human-readable permission label
+        description:
+          type: string
+          description: Permission description
+        category:
+          type: string
+          description: Permission category (e.g., "organization", "member", "role")
+        bitValue:
+          type: string
+          description: Bitwise permission value as a string
 
     ErrorResponse:
       type: object
@@ -818,6 +913,29 @@ paths:
         '403':
           $ref: '#/components/responses/ForbiddenError'
 
+  /permissions:
+    get:
+      operationId: getPermissions
+      summary: Get all available permissions
+      description: Returns all permissions that can be assigned to roles
+      tags:
+        - Permissions
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Permissions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PermissionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
   /invitations:
     post:
       operationId: createInvitation
@@ -1095,6 +1213,143 @@ paths:
       responses:
         '200':
           description: Member removed successfully
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /mobile-applications:
+    get:
+      operationId: getAllMobileApplications
+      summary: Get all mobile applications for the organization
+      tags:
+        - Mobile Applications
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Mobile applications retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MobileApplicationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+    
+    post:
+      operationId: createMobileApplication
+      summary: Create a new mobile application
+      tags:
+        - Mobile Applications
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMobileApplicationRequest'
+      responses:
+        '201':
+          description: Mobile application created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileApplicationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '409':
+          $ref: '#/components/responses/ConflictError'
+
+  /mobile-applications/{id}:
+    get:
+      operationId: getMobileApplicationById
+      summary: Get mobile application by ID
+      tags:
+        - Mobile Applications
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Mobile application retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileApplicationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    
+    put:
+      operationId: updateMobileApplication
+      summary: Update mobile application
+      tags:
+        - Mobile Applications
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMobileApplicationRequest'
+      responses:
+        '200':
+          description: Mobile application updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileApplicationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    
+    delete:
+      operationId: deleteMobileApplication
+      summary: Delete mobile application
+      tags:
+        - Mobile Applications
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Mobile application deleted successfully
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':

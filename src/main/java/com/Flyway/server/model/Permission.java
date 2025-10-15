@@ -41,7 +41,13 @@ public enum Permission {
     
     // Billing permissions (bits 22-23)
     BILLING_VIEW("billing.view", "View Billing", "Can view billing information", "billing", 1L << 22),
-    BILLING_MANAGE("billing.manage", "Manage Billing", "Can manage billing and subscriptions", "billing", 1L << 23);
+    BILLING_MANAGE("billing.manage", "Manage Billing", "Can manage billing and subscriptions", "billing", 1L << 23),
+    
+    // Mobile Application permissions (bits 24-27)
+    MOBILE_APP_READ("mobile_app.read", "View Mobile Apps", "Can view mobile applications", "mobile_app", 1L << 24),
+    MOBILE_APP_CREATE("mobile_app.create", "Create Mobile Apps", "Can create new mobile applications", "mobile_app", 1L << 25),
+    MOBILE_APP_UPDATE("mobile_app.update", "Update Mobile Apps", "Can update mobile applications", "mobile_app", 1L << 26),
+    MOBILE_APP_DELETE("mobile_app.delete", "Delete Mobile Apps", "Can delete mobile applications", "mobile_app", 1L << 27);
     
     private final String code;
     private final String label;

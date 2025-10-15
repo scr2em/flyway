@@ -1,13 +1,19 @@
 package com.Flyway.server.service;
 
+import com.Flyway.server.dto.generated.PermissionResponse;
 import com.Flyway.server.jooq.tables.records.OrganizationMembersRecord;
 import com.Flyway.server.jooq.tables.records.RolesRecord;
+import com.Flyway.server.model.Permission;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.RoleRepository;
 import com.Flyway.server.util.PermissionUtil;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,5 +58,29 @@ public class PermissionService {
         // Check if the role has this permission using bitwise operations
         return PermissionUtil.hasPermission(rolePermissions, permissionCode);
     }
- 
+    
+    /**
+     * Get all available permissions in the system
+     * 
+     * @return List of all permissions
+     */
+    public List<PermissionResponse> getAllPermissions() {
+        return Arrays.stream(Permission.values())
+            .map(this::toPermissionResponse)
+            .collect(Collectors.toList());
+    }
+    
+    /**
+     * Convert Permission enum to PermissionResponse DTO
+     */
+    private PermissionResponse toPermissionResponse(Permission permission) {
+        return new PermissionResponse(
+            permission.getCode(),
+            permission.getLabel(),
+            permission.getDescription(),
+            permission.getCategory(),
+            String.valueOf(permission.getBitValue())
+        );
+    }
+
 }
