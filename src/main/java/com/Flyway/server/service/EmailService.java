@@ -122,8 +122,7 @@ public class EmailService {
             String temporaryPassword,
             String invitationToken
     ) {
-        String acceptUrl = baseUrl + "/invitations/accept?token=" + invitationToken;
-        String rejectUrl = baseUrl + "/invitations/reject?token=" + invitationToken;
+        String invitationUrl = baseUrl + "/invitations/accept?token=" + invitationToken;
         
         return """
                 <!DOCTYPE html>
@@ -174,18 +173,15 @@ public class EmailService {
                         }
                         .button {
                             display: inline-block;
-                            padding: 12px 30px;
+                            padding: 15px 40px;
                             margin: 10px 5px;
                             text-decoration: none;
                             border-radius: 5px;
                             font-weight: bold;
+                            font-size: 16px;
                         }
-                        .button-accept {
+                        .button-primary {
                             background-color: #4CAF50;
-                            color: white;
-                        }
-                        .button-reject {
-                            background-color: #f44336;
                             color: white;
                         }
                         .footer {
@@ -222,11 +218,10 @@ public class EmailService {
                                 <strong>⚠️ Important:</strong> This is a temporary password. You will be required to change it after your first login.
                             </div>
                             
-                            <p>Please click one of the buttons below to respond to this invitation:</p>
+                            <p>Click the button below to view your invitation:</p>
                             
                             <div style="text-align: center; margin: 30px 0;">
-                                <a href="%s" class="button button-accept">Accept Invitation</a>
-                                <a href="%s" class="button button-reject">Reject Invitation</a>
+                                <a href="%s" class="button button-primary">View Invitation</a>
                             </div>
                             
                             <p><strong>Note:</strong> This invitation will expire in 7 days.</p>
@@ -238,7 +233,7 @@ public class EmailService {
                     </div>
                 </body>
                 </html>
-                """.formatted(firstName, lastName, organizationName, temporaryPassword, acceptUrl, rejectUrl);
+                """.formatted(firstName, lastName, organizationName, temporaryPassword, invitationUrl);
     }
     
     private String buildResendInvitationEmailContent(
@@ -248,8 +243,7 @@ public class EmailService {
             String temporaryPassword,
             String invitationToken
     ) {
-        String acceptUrl = baseUrl + "/invitations/accept?token=" + invitationToken;
-        String rejectUrl = baseUrl + "/invitations/reject?token=" + invitationToken;
+        String invitationUrl = baseUrl + "/invitations/accept?token=" + invitationToken;
         
         return """
                 <!DOCTYPE html>
@@ -300,18 +294,15 @@ public class EmailService {
                         }
                         .button {
                             display: inline-block;
-                            padding: 12px 30px;
+                            padding: 15px 40px;
                             margin: 10px 5px;
                             text-decoration: none;
                             border-radius: 5px;
                             font-weight: bold;
+                            font-size: 16px;
                         }
-                        .button-accept {
-                            background-color: #4CAF50;
-                            color: white;
-                        }
-                        .button-reject {
-                            background-color: #f44336;
+                        .button-primary {
+                            background-color: #2196F3;
                             color: white;
                         }
                         .footer {
@@ -358,11 +349,10 @@ public class EmailService {
                                 <strong>⚠️ Important:</strong> This is a temporary password. You will be required to change it after your first login.
                             </div>
                             
-                            <p>Please click one of the buttons below to respond to this invitation:</p>
+                            <p>Click the button below to view your invitation:</p>
                             
                             <div style="text-align: center; margin: 30px 0;">
-                                <a href="%s" class="button button-accept">Accept Invitation</a>
-                                <a href="%s" class="button button-reject">Reject Invitation</a>
+                                <a href="%s" class="button button-primary">View Invitation</a>
                             </div>
                             
                             <p><strong>Note:</strong> This invitation will expire in 7 days.</p>
@@ -374,7 +364,7 @@ public class EmailService {
                     </div>
                 </body>
                 </html>
-                """.formatted(firstName, lastName, organizationName, temporaryPassword, acceptUrl, rejectUrl);
+                """.formatted(firstName, lastName, organizationName, temporaryPassword, invitationUrl);
     }
 }
 

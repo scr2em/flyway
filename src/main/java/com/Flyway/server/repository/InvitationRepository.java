@@ -96,6 +96,13 @@ public class InvitationRepository {
                 .execute();
     }
     
+    public int deleteByEmailAndOrganizationId(String email, String organizationId) {
+        return dsl.deleteFrom(INVITATIONS)
+                .where(INVITATIONS.EMAIL.eq(email)
+                        .and(INVITATIONS.ORGANIZATION_ID.eq(organizationId)))
+                .execute();
+    }
+    
     public int markExpired() {
         // Get pending status ID first
         Optional<InvitationStatusesRecord> pendingStatus = dsl.selectFrom(INVITATION_STATUSES)

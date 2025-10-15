@@ -92,13 +92,21 @@ public class UserService {
     
     @Transactional
     public void deleteUser(String id) {
-        userRepository.findById(id)
+        UsersRecord user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
         
         // Check if user is an organization owner
         List<?> ownedOrganizations = organizationRepository.findByCreatedBy(id);
         if (!ownedOrganizations.isEmpty()) {
             throw new ForbiddenException("Cannot delete user who is an organization owner. Please transfer ownership or delete the organization first.");
+        }
+        
+        // Get user's organization
+        List<OrganizationMembersRecord> memberships = organizationMemberRepository.findByUserId(id);
+        if (!memberships.isEmpty()) {
+            String organizationId = memberships.get(0).getOrganizationId();
+            // Delete the invitation for this user in this organization
+            invitationRepository.deleteByEmailAndOrganizationId(user.getEmail(), organizationId);
         }
         
         userRepository.delete(id);
