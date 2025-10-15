@@ -3,6 +3,8 @@ package com.Flyway.server.service;
 import com.Flyway.server.dto.generated.CreateOrganizationRequest;
 import com.Flyway.server.dto.generated.UpdateOrganizationRequest;
 import com.Flyway.server.dto.generated.OrganizationResponse;
+import com.Flyway.server.event.OrganizationCreatedEvent;
+import com.Flyway.server.event.OrganizationUpdatedEvent;
 import com.Flyway.server.jooq.tables.records.OrganizationsRecord;
 import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ResourceNotFoundException;
@@ -11,6 +13,7 @@ import com.Flyway.server.repository.OrganizationRepository;
 import com.Flyway.server.repository.RoleRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +29,7 @@ public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final RoleRepository roleRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
+    private final ApplicationEventPublisher eventPublisher;
     
     public OrganizationResponse getOrganizationById(String id) {
         OrganizationsRecord org = organizationRepository.findById(id)
@@ -66,16 +70,34 @@ public class OrganizationService {
         // Assign Owner role to creator
         assignOwnerRole(orgId, createdBy);
         
-        return getOrganizationById(orgId);
+        OrganizationResponse response = getOrganizationById(orgId);
+        
+        // Publish event for audit logging, webhooks, and notifications
+        eventPublisher.publishEvent(new OrganizationCreatedEvent(
+                orgId,
+                request.getName(),
+                createdBy
+        ));
+        
+        return response;
     }
     
     @Transactional
-    public OrganizationResponse updateOrganization(String id, UpdateOrganizationRequest request) {
+    public OrganizationResponse updateOrganization(String id, UpdateOrganizationRequest request, String userId) {
         organizationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", id));
         
         organizationRepository.update(id, request.getName());
-        return getOrganizationById(id);
+        OrganizationResponse response = getOrganizationById(id);
+        
+        // Publish event for audit logging, webhooks, and notifications
+        eventPublisher.publishEvent(new OrganizationUpdatedEvent(
+                id,
+                request.getName(),
+                userId
+        ));
+        
+        return response;
     }
     
     /**

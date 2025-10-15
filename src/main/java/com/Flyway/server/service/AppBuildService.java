@@ -2,6 +2,8 @@ package com.Flyway.server.service;
 
 import com.Flyway.server.dto.generated.BuildResponse;
 import com.Flyway.server.dto.generated.PaginatedBuildResponse;
+import com.Flyway.server.event.BuildDeletedEvent;
+import com.Flyway.server.event.BuildUploadedEvent;
 import com.Flyway.server.exception.BadRequestException;
 import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ForbiddenException;
@@ -11,6 +13,7 @@ import com.Flyway.server.repository.AppBuildRepository;
 import com.Flyway.server.repository.MobileApplicationRepository;
 import com.Flyway.server.storage.StorageService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +30,7 @@ public class AppBuildService {
     private final AppBuildRepository appBuildRepository;
     private final MobileApplicationRepository mobileApplicationRepository;
     private final StorageService storageService;
+    private final ApplicationEventPublisher eventPublisher;
     
     private static final long MAX_FILE_SIZE = 30 * 1024 * 1024; // 30MB in bytes
     
@@ -136,7 +140,21 @@ public class AppBuildService {
             throw e;
         }
         
-        return mapToBuildResponse(build);
+        BuildResponse response = mapToBuildResponse(build);
+        
+        // Publish event for audit logging, webhooks, and notifications
+        eventPublisher.publishEvent(new BuildUploadedEvent(
+                build.getId(),
+                bundleId,
+                commitHash,
+                branchName,
+                nativeVersion,
+                file.getSize(),
+                apiKeyId, // Using API key ID as userId for API uploads
+                organizationId
+        ));
+        
+        return response;
     }
     
     /**
@@ -145,7 +163,8 @@ public class AppBuildService {
     @Transactional
     public void deleteBuild(
             String buildId,
-            String authenticatedUserOrgId) throws IOException {
+            String authenticatedUserOrgId,
+            String userId) throws IOException {
         
         // Find the build
         AppBuildsRecord build = appBuildRepository.findById(buildId)
@@ -155,6 +174,11 @@ public class AppBuildService {
         if (!build.getOrganizationId().equals(authenticatedUserOrgId)) {
             throw new ForbiddenException("You do not have access to this organization");
         }
+        
+        // Store build details for the event before deletion
+        String bundleId = build.getBundleId();
+        String commitHash = build.getCommitHash();
+        String organizationId = build.getOrganizationId();
         
         // Delete from storage
         String filePath = extractFilePathFromUrl(
@@ -170,6 +194,15 @@ public class AppBuildService {
         
         // Delete from database
         appBuildRepository.deleteById(buildId);
+        
+        // Publish event for audit logging, webhooks, and notifications
+        eventPublisher.publishEvent(new BuildDeletedEvent(
+                buildId,
+                bundleId,
+                commitHash,
+                userId,
+                organizationId
+        ));
     }
     
     /**

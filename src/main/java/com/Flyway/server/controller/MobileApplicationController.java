@@ -68,7 +68,7 @@ public class MobileApplicationController {
             @Valid @RequestBody UpdateMobileApplicationRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         MobileApplicationResponse app = mobileApplicationService.updateMobileApplication(
-                id, request, userDetails.getOrganizationId());
+                id, request, userDetails.getOrganizationId(), userDetails.getId());
         return ResponseEntity.ok(app);
     }
     
@@ -77,7 +77,7 @@ public class MobileApplicationController {
     public ResponseEntity<Void> deleteMobileApplication(
             @PathVariable String id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        mobileApplicationService.deleteMobileApplication(id, userDetails.getOrganizationId());
+        mobileApplicationService.deleteMobileApplication(id, userDetails.getOrganizationId(), userDetails.getId());
         return ResponseEntity.noContent().build();
     }
 }

@@ -118,7 +118,8 @@ public class AppBuildController {
         
         appBuildService.deleteBuild(
                 buildId,
-                userDetails.getOrganizationId()
+                userDetails.getOrganizationId(),
+                userDetails.getId()
         );
         
         return ResponseEntity.noContent().build();

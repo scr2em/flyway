@@ -63,7 +63,10 @@ public enum Permission {
     CHANNEL_VIEW("channel.view", "View Channels", "Can view channels", "channel", 1L << 34),
     CHANNEL_CREATE("channel.create", "Create Channels", "Can create new channels", "channel", 1L << 35),
     CHANNEL_UPDATE("channel.update", "Update Channels", "Can update channels", "channel", 1L << 36),
-    CHANNEL_DELETE("channel.delete", "Delete Channels", "Can delete channels", "channel", 1L << 37);
+    CHANNEL_DELETE("channel.delete", "Delete Channels", "Can delete channels", "channel", 1L << 37),
+    
+    // Audit Log permissions (bit 38)
+    AUDIT_READ("audit.read", "View Audit Logs", "Can view audit logs and activity history", "audit", 1L << 38);
     
     private final String code;
     private final String label;

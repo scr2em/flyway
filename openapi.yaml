@@ -30,6 +30,8 @@ tags:
     description: API key management for build uploads
   - name: Channels
     description: Channel management operations
+  - name: Audit Logs
+    description: Audit log and activity tracking operations
 
 components:
   schemas:
@@ -766,6 +768,92 @@ components:
         totalElements:
           type: integer
           description: Total number of channels
+        totalPages:
+          type: integer
+          description: Total number of pages
+
+    AuditLogResponse:
+      type: object
+      description: Audit log entry
+      required:
+        - id
+        - action
+        - createdAt
+      properties:
+        id:
+          type: string
+          description: Unique identifier for the audit log entry
+        userId:
+          type: string
+          description: ID of the user who performed the action
+        organizationId:
+          type: string
+          description: ID of the organization
+        action:
+          type: string
+          description: Action performed (e.g., MOBILE_APP_CREATED, BUILD_UPLOADED)
+        resourceType:
+          type: string
+          description: Type of resource affected (e.g., MOBILE_APPLICATION, BUILD)
+        resourceId:
+          type: string
+          description: ID of the affected resource
+        resourceName:
+          type: string
+          description: Name of the affected resource
+        httpMethod:
+          type: string
+          description: HTTP method used (GET, POST, PUT, DELETE)
+        endpoint:
+          type: string
+          description: API endpoint called
+        ipAddress:
+          type: string
+          description: IP address of the user
+        userAgent:
+          type: string
+          description: User agent string
+        requestBody:
+          type: string
+          description: Request body (if applicable)
+        responseStatus:
+          type: integer
+          description: HTTP response status code
+        errorMessage:
+          type: string
+          description: Error message (if action failed)
+        metadata:
+          type: string
+          description: Additional metadata in JSON format
+        createdAt:
+          type: string
+          format: date-time
+          description: When the action occurred
+
+    PaginatedAuditLogResponse:
+      type: object
+      description: Paginated audit log response
+      required:
+        - data
+        - page
+        - size
+        - totalElements
+        - totalPages
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLogResponse'
+          description: List of audit log entries
+        page:
+          type: integer
+          description: Current page number
+        size:
+          type: integer
+          description: Number of items per page
+        totalElements:
+          type: integer
+          description: Total number of audit log entries
         totalPages:
           type: integer
           description: Total number of pages
@@ -2166,4 +2254,80 @@ paths:
           $ref: '#/components/responses/ForbiddenError'
         '404':
           $ref: '#/components/responses/NotFoundError'
+
+  /audit-logs:
+    get:
+      operationId: getAuditLogs
+      summary: Get audit logs for an organization
+      description: Retrieve paginated audit logs with optional filtering by action, resource type, user, and date range
+      tags:
+        - Audit Logs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by action (e.g., MOBILE_APP_CREATED)
+        - name: resourceType
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by resource type (e.g., MOBILE_APPLICATION)
+        - name: userId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by user ID
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Filter by start date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Filter by end date
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+          description: Page number (0-indexed)
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 20
+          description: Page size
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+          description: Sort order by created date
+      responses:
+        '200':
+          description: Audit logs retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLogResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
 

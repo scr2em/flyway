@@ -42,7 +42,8 @@ public class OrganizationController {
     public ResponseEntity<OrganizationResponse> updateOrganization(
             @Valid @RequestBody UpdateOrganizationRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        OrganizationResponse organization = organizationService.updateOrganization(userDetails.getOrganizationId(), request);
+        OrganizationResponse organization = organizationService.updateOrganization(
+                userDetails.getOrganizationId(), request, userDetails.getId());
         return ResponseEntity.ok(organization);
     }
 }
