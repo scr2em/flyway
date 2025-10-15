@@ -1275,6 +1275,35 @@ paths:
         '409':
           $ref: '#/components/responses/ConflictError'
 
+  /mobile-applications/bundle/{bundleId}:
+    get:
+      operationId: getMobileApplicationByBundleId
+      summary: Get mobile application by bundle ID
+      tags:
+        - Mobile Applications
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The bundle ID of the mobile application (e.g., com.example.app)
+      responses:
+        '200':
+          description: Mobile application retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobileApplicationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
   /mobile-applications/{id}:
     get:
       operationId: getMobileApplicationById

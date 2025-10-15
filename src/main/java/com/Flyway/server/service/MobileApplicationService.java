@@ -35,6 +35,18 @@ public class MobileApplicationService {
         return mapToMobileApplicationResponse(app);
     }
     
+    public MobileApplicationResponse getMobileApplicationByBundleId(String bundleId, String organizationId) {
+        MobileApplicationsRecord app = mobileApplicationRepository.findByBundleId(bundleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Mobile Application", "bundleId", bundleId));
+        
+        // Verify the app belongs to the user's organization
+        if (!app.getOrganizationId().equals(organizationId)) {
+            throw new ForbiddenException("You do not have access to this mobile application");
+        }
+        
+        return mapToMobileApplicationResponse(app);
+    }
+    
     public List<MobileApplicationResponse> getAllMobileApplications(String organizationId) {
         return mobileApplicationRepository.findByOrganizationId(organizationId).stream()
                 .map(this::mapToMobileApplicationResponse)
@@ -50,6 +62,11 @@ public class MobileApplicationService {
         // Check if bundle ID already exists
         if (mobileApplicationRepository.existsByBundleId(request.getBundleId())) {
             throw new ConflictException("A mobile application with bundle ID '" + request.getBundleId() + "' already exists");
+        }
+        
+        // Check if name already exists for this organization
+        if (mobileApplicationRepository.existsByNameAndOrganizationId(request.getName(), organizationId)) {
+            throw new ConflictException("A mobile application with name '" + request.getName() + "' already exists in this organization");
         }
         
         // Create the mobile application
@@ -76,6 +93,12 @@ public class MobileApplicationService {
         // Verify the app belongs to the user's organization
         if (!app.getOrganizationId().equals(organizationId)) {
             throw new ForbiddenException("You do not have access to this mobile application");
+        }
+        
+        // Check if the new name already exists for this organization (but not for this app)
+        if (!app.getName().equals(request.getName()) && 
+            mobileApplicationRepository.existsByNameAndOrganizationId(request.getName(), organizationId)) {
+            throw new ConflictException("A mobile application with name '" + request.getName() + "' already exists in this organization");
         }
         
         // Update the mobile application

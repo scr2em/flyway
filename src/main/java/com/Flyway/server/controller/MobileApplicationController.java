@@ -41,6 +41,16 @@ public class MobileApplicationController {
         return ResponseEntity.ok(app);
     }
     
+    @GetMapping("/bundle/{bundleId}")
+    @RequirePermission("mobile_app.read")
+    public ResponseEntity<MobileApplicationResponse> getMobileApplicationByBundleId(
+            @PathVariable String bundleId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        MobileApplicationResponse app = mobileApplicationService.getMobileApplicationByBundleId(
+                bundleId, userDetails.getOrganizationId());
+        return ResponseEntity.ok(app);
+    }
+    
     @PostMapping
     @RequirePermission("mobile_app.create")
     public ResponseEntity<MobileApplicationResponse> createMobileApplication(

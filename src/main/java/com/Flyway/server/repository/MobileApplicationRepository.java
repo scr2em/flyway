@@ -81,6 +81,14 @@ public class MobileApplicationRepository {
         );
     }
     
+    public boolean existsByNameAndOrganizationId(String name, String organizationId) {
+        return dsl.fetchExists(
+                dsl.selectFrom(MOBILE_APPLICATIONS)
+                        .where(MOBILE_APPLICATIONS.NAME.eq(name)
+                                .and(MOBILE_APPLICATIONS.ORGANIZATION_ID.eq(organizationId)))
+        );
+    }
+    
     public boolean belongsToOrganization(String appId, String organizationId) {
         return dsl.fetchExists(
                 dsl.selectFrom(MOBILE_APPLICATIONS)
