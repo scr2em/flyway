@@ -117,6 +117,7 @@ components:
       description: Request to create a new role
       required:
         - name
+        - permissions
       properties:
         name:
           type: string
@@ -124,11 +125,9 @@ components:
         description:
           type: string
           description: Role description
-        permissionCodes:
-          type: array
-          items:
-            type: string
-          description: List of permission codes
+        permissions:
+          type: string
+          description: Bitwise permissions value as a string (e.g., "12345")
 
     UpdateRoleRequest:
       type: object
@@ -140,11 +139,9 @@ components:
         description:
           type: string
           description: Role description
-        permissionCodes:
-          type: array
-          items:
-            type: string
-          description: List of permission codes
+        permissions:
+          type: string
+          description: Bitwise permissions value as a string (e.g., "12345")
 
     CreateInvitationRequest:
       type: object
@@ -339,12 +336,11 @@ components:
 
     RoleResponse:
       type: object
-      description: Role information
+      description: Role information (roles are now global across all organizations)
       required:
         - id
         - name
-        - organizationId
-        - isSystemRole
+        - permissionsValue
         - createdAt
       properties:
         id:
@@ -356,17 +352,14 @@ components:
         description:
           type: string
           description: Role description
-        organizationId:
+        permissionsValue:
           type: string
-          description: Organization ID
-        isSystemRole:
-          type: boolean
-          description: Whether this is a system role
+          description: Bitwise permissions value as a string (e.g., "12345")
         permissions:
           type: array
           items:
             $ref: '#/components/schemas/PermissionResponse'
-          description: List of permissions
+          description: List of permissions (for display purposes)
         createdAt:
           type: string
           format: date-time
@@ -877,7 +870,8 @@ paths:
   /roles:
     get:
       operationId: getRoles
-      summary: Get all roles in organization
+      summary: Get all available roles
+      description: Returns all global roles that can be assigned to organization members
       tags:
         - Roles
       security:
@@ -891,197 +885,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/RoleResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-    
-    post:
-      operationId: createRole
-      summary: Create a new role
-      tags:
-        - Roles
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateRoleRequest'
-      responses:
-        '201':
-          description: Role created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RoleResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-
-  /roles/{id}:
-    get:
-      operationId: getRoleById
-      summary: Get role by ID
-      tags:
-        - Roles
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Role retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RoleResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-    
-    put:
-      operationId: updateRole
-      summary: Update role
-      tags:
-        - Roles
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateRoleRequest'
-      responses:
-        '200':
-          description: Role updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/RoleResponse'
-        '400':
-          $ref: '#/components/responses/ValidationError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-    
-    delete:
-      operationId: deleteRole
-      summary: Delete role
-      tags:
-        - Roles
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Role deleted successfully
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-
-  /permissions:
-    get:
-      operationId: getAllPermissions
-      summary: Get all permissions
-      tags:
-        - Permissions
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Permissions retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PermissionResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-
-  /permissions/{code}:
-    get:
-      operationId: getPermissionByCode
-      summary: Get permission by code
-      tags:
-        - Permissions
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: code
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Permission retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PermissionResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-
-  /permissions/category/{category}:
-    get:
-      operationId: getPermissionsByCategory
-      summary: Get permissions by category
-      tags:
-        - Permissions
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: category
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Permissions retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/PermissionResponse'
         '401':
           $ref: '#/components/responses/UnauthorizedError'
         '403':

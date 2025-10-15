@@ -2,16 +2,17 @@ package com.Flyway.server.service;
 
 import com.Flyway.server.dto.generated.PermissionResponse;
 import com.Flyway.server.jooq.tables.records.OrganizationMembersRecord;
-import com.Flyway.server.jooq.tables.records.PermissionsRecord;
+import com.Flyway.server.jooq.tables.records.RolesRecord;
 import com.Flyway.server.exception.ResourceNotFoundException;
+import com.Flyway.server.model.Permission;
 import com.Flyway.server.repository.OrganizationMemberRepository;
-import com.Flyway.server.repository.PermissionRepository;
-import com.Flyway.server.repository.RolePermissionRepository;
+import com.Flyway.server.repository.RoleRepository;
+import com.Flyway.server.util.PermissionUtil;
 
 import lombok.RequiredArgsConstructor;
-import org.jooq.Record;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,25 +20,36 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class PermissionService {
     
-    private final PermissionRepository permissionRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
-    private final RolePermissionRepository rolePermissionRepository;
+    private final RoleRepository roleRepository;
     
+    /**
+     * Get a permission by its code
+     */
     public PermissionResponse getPermissionByCode(String code) {
-        PermissionsRecord permission = permissionRepository.findByCode(code)
-                .orElseThrow(() -> new ResourceNotFoundException("Permission", "code", code));
+        Permission permission = Permission.fromCode(code);
+        if (permission == null) {
+            throw new ResourceNotFoundException("Permission", "code", code);
+        }
         
         return mapToPermissionResponse(permission);
     }
     
+    /**
+     * Get all available permissions
+     */
     public List<PermissionResponse> getAllPermissions() {
-        return permissionRepository.findAll().stream()
+        return Arrays.stream(Permission.values())
                 .map(this::mapToPermissionResponse)
                 .collect(Collectors.toList());
     }
     
+    /**
+     * Get permissions by category
+     */
     public List<PermissionResponse> getPermissionsByCategory(String category) {
-        return permissionRepository.findByCategory(category).stream()
+        return Arrays.stream(Permission.values())
+                .filter(p -> p.getCategory().equals(category))
                 .map(this::mapToPermissionResponse)
                 .collect(Collectors.toList());
     }
@@ -65,8 +77,17 @@ public class PermissionService {
             return false;
         }
         
-        // Check if the role has this permission
-        return rolePermissionRepository.existsByRoleIdAndPermissionCode(roleId, permissionCode);
+        // Get the role and check permissions using bitwise operations
+        var roleOptional = roleRepository.findById(roleId);
+        if (roleOptional.isEmpty()) {
+            return false;
+        }
+        
+        RolesRecord role = roleOptional.get();
+        long rolePermissions = role.getPermissions();
+        
+        // Check if the role has this permission using bitwise operations
+        return PermissionUtil.hasPermission(rolePermissions, permissionCode);
     }
     
     /**
@@ -91,26 +112,48 @@ public class PermissionService {
             return List.of();
         }
         
-        // Get all permissions for the role
-        List<Record> rolePermissions = rolePermissionRepository.findByRoleId(roleId);
+        // Get the role and extract permissions using bitwise operations
+        var roleOptional = roleRepository.findById(roleId);
+        if (roleOptional.isEmpty()) {
+            return List.of();
+        }
         
-        return rolePermissions.stream()
-                .map(record -> record.get("code", String.class))
+        RolesRecord role = roleOptional.get();
+        long rolePermissions = role.getPermissions();
+        
+        // Convert bitwise permissions to list of codes
+        return PermissionUtil.toCodes(rolePermissions);
+    }
+    
+    /**
+     * Get all permissions for a role
+     * 
+     * @param roleId The role ID
+     * @return List of permission responses
+     */
+    public List<PermissionResponse> getPermissionsForRole(String roleId) {
+        var roleOptional = roleRepository.findById(roleId);
+        if (roleOptional.isEmpty()) {
+            return List.of();
+        }
+        
+        RolesRecord role = roleOptional.get();
+        long rolePermissions = role.getPermissions();
+        
+        // Convert bitwise permissions to list of Permission enums
+        List<Permission> permissions = PermissionUtil.toPermissions(rolePermissions);
+        
+        return permissions.stream()
+                .map(this::mapToPermissionResponse)
                 .collect(Collectors.toList());
     }
     
-    private PermissionResponse mapToPermissionResponse(PermissionsRecord record) {
-        String code = record.getCode();
-        String[] codeParts = code != null ? code.split("\\.", 2) : new String[]{"", ""};
-        String resource = codeParts.length > 0 ? codeParts[0] : "";
-        String action = codeParts.length > 1 ? codeParts[1] : "";
-        
+    private PermissionResponse mapToPermissionResponse(Permission permission) {
         return new PermissionResponse()
-                .code(record.getCode())
-                .name(record.getLabel())
-                .description(record.getDescription())
-                .resource(resource)
-                .action(action);
+                .code(permission.getCode())
+                .name(permission.getLabel())
+                .description(permission.getDescription())
+                .resource(permission.getResource())
+                .action(permission.getAction());
     }
 }
-

@@ -84,15 +84,7 @@ public class InvitationService {
         userRepository.findByEmail(request.getEmail()).ifPresent(user -> {
             throw new ConflictException("User with this email already exists");
         });
-        
-        // Verify role exists and belongs to the organization
-        RolesRecord role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", request.getRoleId()));
-        
-        if (!role.getOrganizationId().equals(organizationId)) {
-            throw new ConflictException("Role does not belong to this organization");
-        }
-        
+     
         // Get active user status
         UserStatusesRecord activeStatus = userStatusRepository.findByCode("active")
                 .orElseThrow(() -> new RuntimeException("Active status not found"));

@@ -8,13 +8,11 @@ import com.Flyway.server.dto.generated.RoleResponse;
 import com.Flyway.server.dto.generated.UserResponse;
 import com.Flyway.server.jooq.tables.records.OrganizationMembersRecord;
 import com.Flyway.server.jooq.tables.records.OrganizationsRecord;
-import com.Flyway.server.jooq.tables.records.RolesRecord;
 import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.OrganizationRepository;
-import com.Flyway.server.repository.RoleRepository;
 import com.Flyway.server.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -32,7 +30,6 @@ public class OrganizationMemberService {
     
     private final OrganizationMemberRepository memberRepository;
     private final UserRepository userRepository;
-    private final RoleRepository roleRepository;
     private final OrganizationRepository organizationRepository;
     private final UserService userService;
     private final RoleService roleService;
@@ -81,14 +78,6 @@ public class OrganizationMemberService {
         userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
         
-        // Check if role exists and belongs to organization
-        RolesRecord role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", request.getRoleId()));
-        
-        if (!role.getOrganizationId().equals(organizationId)) {
-            throw new ConflictException("Role does not belong to this organization");
-        }
-        
         // Check if user is already in ANY organization (enforce 1 org per user rule)
         List<?> existingMemberships = memberRepository.findByUserId(request.getUserId());
         if (!existingMemberships.isEmpty()) {
@@ -111,16 +100,6 @@ public class OrganizationMemberService {
             throw new ForbiddenException("Cannot change the role of the organization owner. The organization must always have an owner.");
         }
         
-        // Check if role exists and belongs to same organization
-        RolesRecord role = roleRepository.findById(request.getRoleId())
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", request.getRoleId()));
-        
-        String orgId = member.getOrganizationId();
-        if (!role.getOrganizationId().equals(orgId)) {
-            throw new ConflictException("Role does not belong to this organization");
-        }
-        
-        // Update role
         memberRepository.updateRole(memberId, request.getRoleId());
         
         return getMemberById(memberId);

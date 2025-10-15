@@ -10,18 +10,15 @@ import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ForbiddenException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
-import com.Flyway.server.repository.PermissionRepository;
-import com.Flyway.server.repository.RolePermissionRepository;
 import com.Flyway.server.repository.RoleRepository;
+import com.Flyway.server.util.PermissionUtil;
 
 import lombok.RequiredArgsConstructor;
-import org.jooq.Record;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -30,9 +27,8 @@ import java.util.stream.Collectors;
 public class RoleService {
     
     private final RoleRepository roleRepository;
-    private final RolePermissionRepository rolePermissionRepository;
-    private final PermissionRepository permissionRepository;
     private final OrganizationMemberRepository organizationMemberRepository;
+    private final PermissionService permissionService;
     
     public RoleResponse getRoleById(String id) {
         RolesRecord role = roleRepository.findById(id)
@@ -47,79 +43,48 @@ public class RoleService {
                 .collect(Collectors.toList());
     }
     
-    public List<RoleResponse> getRolesByOrganizationId(String organizationId) {
-        return roleRepository.findByOrganizationId(organizationId).stream()
-                .map(this::mapToRoleResponse)
-                .collect(Collectors.toList());
-    }
-    
     @Transactional
-    public RoleResponse createRole(CreateRoleRequest request, String organizationId) {
-        // Check if role name already exists in organization
-        roleRepository.findByOrganizationIdAndName(organizationId, request.getName())
+    public RoleResponse createRole(CreateRoleRequest request) {
+        // Check if role name already exists (roles are now global)
+        roleRepository.findByName(request.getName())
                 .ifPresent(r -> {
-                    throw new ConflictException("Role with name '" + request.getName() + "' already exists in this organization");
+                    throw new ConflictException("Role with name '" + request.getName() + "' already exists");
                 });
         
-        // Create role
-        String roleId = roleRepository.create(organizationId, request.getName(), false, false);
+        // Parse permissions from string
+        long permissions = PermissionUtil.parsePermissionString(request.getPermissions());
         
-        // Assign permissions
-        if (request.getPermissionCodes() != null && !request.getPermissionCodes().isEmpty()) {
-            assignPermissionsToRole(roleId, request.getPermissionCodes());
-        }
+        // Create role
+        String roleId = roleRepository.create(
+            request.getName(), 
+            request.getDescription(),
+            permissions
+        );
         
         return getRoleById(roleId);
     }
     
     @Transactional
     public RoleResponse updateRole(String id, UpdateRoleRequest request) {
-        RolesRecord role = roleRepository.findById(id)
+        roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", id));
         
-        // Check if role is a system role (byte 1 = true)
-        if (role.getIsSystemRole() != 0) {
-            throw new BadRequestException("Cannot update system role");
+        // Parse permissions if provided
+        Long permissions = null;
+        if (request.getPermissions() != null) {
+            permissions = PermissionUtil.parsePermissionString(request.getPermissions());
         }
         
-        // Check if role is immutable (byte 1 = true)
-        if (role.getIsImmutable() != 0) {
-            throw new BadRequestException("Cannot update immutable role");
-        }
-        
-        // Update role name if provided
-        if (request.getName() != null) {
-            roleRepository.update(id, request.getName());
-        }
-        
-        // Update permissions if provided
-        if (request.getPermissionCodes() != null) {
-            // Remove existing permissions
-            rolePermissionRepository.deleteByRoleId(id);
-            
-            // Add new permissions
-            if (!request.getPermissionCodes().isEmpty()) {
-                assignPermissionsToRole(id, request.getPermissionCodes());
-            }
-        }
+        // Update role
+        roleRepository.update(id, request.getName(), request.getDescription(), permissions);
         
         return getRoleById(id);
     }
     
     @Transactional
     public void deleteRole(String id) {
-        RolesRecord role = roleRepository.findById(id)
+        roleRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Role", "id", id));
-        
-        // Check if role is a system role (byte 1 = true)
-        if (role.getIsSystemRole() != 0) {
-            throw new BadRequestException("Cannot delete system role");
-        }
-        
-        // Check if role is immutable (byte 1 = true)
-        if (role.getIsImmutable() != 0) {
-            throw new BadRequestException("Cannot delete immutable role");
-        }
         
         // Check if role has any members assigned to it
         if (!organizationMemberRepository.findByRoleId(id).isEmpty()) {
@@ -129,66 +94,26 @@ public class RoleService {
         roleRepository.delete(id);
     }
     
-    public void verifyRoleOwnership(String roleId, String organizationId) {
-        RolesRecord role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new ResourceNotFoundException("Role", "id", roleId));
-        
-        if (!role.getOrganizationId().equals(organizationId)) {
-            throw new ForbiddenException("You do not have access to this role");
-        }
-    }
-    
-    private void assignPermissionsToRole(String roleId, List<String> permissionCodes) {
-        for (String permissionCode : permissionCodes) {
-            // Verify permission exists
-            permissionRepository.findByCode(permissionCode)
-                    .orElseThrow(() -> new ResourceNotFoundException("Permission", "code", permissionCode));
-            
-            // Create role-permission association
-            rolePermissionRepository.create(roleId, permissionCode);
-        }
-    }
-    
     private RoleResponse mapToRoleResponse(RolesRecord record) {
         String roleId = record.getId();
         
         // Fetch permissions for this role
-        List<PermissionResponse> permissions = getPermissionsForRole(roleId);
+        List<PermissionResponse> permissions = permissionService.getPermissionsForRole(roleId);
         
         // Convert LocalDateTime to OffsetDateTime
         LocalDateTime createdAtLocal = record.getCreatedAt();
         LocalDateTime updatedAtLocal = record.getUpdatedAt();
         
+        // Get permissions value as string
+        String permissionsValue = PermissionUtil.toPermissionString(record.getPermissions());
+        
         return new RoleResponse()
                 .id(roleId)
-                .organizationId(record.getOrganizationId())
                 .name(record.getName())
-                .description(null) // Description not stored in database
-                .isSystemRole(record.getIsSystemRole() != 0) // Convert byte to boolean
+                .description(record.getDescription())
+                .permissionsValue(permissionsValue)
+                .permissions(permissions)
                 .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
-                .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null)
-                .permissions(permissions);
-    }
-    
-    private List<PermissionResponse> getPermissionsForRole(String roleId) {
-        List<Record> records = rolePermissionRepository.findByRoleId(roleId);
-        
-        List<PermissionResponse> permissions = new ArrayList<>();
-        for (Record record : records) {
-            String code = record.get("code", String.class);
-            String[] codeParts = code != null ? code.split("\\.", 2) : new String[]{"", ""};
-            String resource = codeParts.length > 0 ? codeParts[0] : "";
-            String action = codeParts.length > 1 ? codeParts[1] : "";
-            
-            permissions.add(new PermissionResponse()
-                    .code(record.get("code", String.class))
-                    .name(record.get("label", String.class))
-                    .description(record.get("description", String.class))
-                    .resource(resource)
-                    .action(action));
-        }
-        
-        return permissions;
+                .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null);
     }
 }
-

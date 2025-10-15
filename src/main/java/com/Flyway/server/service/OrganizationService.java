@@ -9,6 +9,7 @@ import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
 import com.Flyway.server.repository.OrganizationRepository;
 import com.Flyway.server.repository.RoleRepository;
+import com.Flyway.server.util.PermissionUtil;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -63,11 +64,8 @@ public class OrganizationService {
         // Create organization
         String orgId = organizationRepository.create(request.getName(), createdBy);
         
-        // Create Owner role (system role, immutable)
-        String ownerRoleId = roleRepository.create(orgId, "Owner", true, true);
-        
-        // Add creator as member with Owner role
-        organizationMemberRepository.create(orgId, createdBy, ownerRoleId);
+        // Assign Owner role to creator
+        assignOwnerRole(orgId, createdBy);
         
         return getOrganizationById(orgId);
     }
@@ -79,6 +77,19 @@ public class OrganizationService {
         
         organizationRepository.update(id, request.getName());
         return getOrganizationById(id);
+    }
+    
+    /**
+     * Assigns the Owner role from global roles to the organization creator
+     */
+    private void assignOwnerRole(String orgId, String createdBy) {
+        // Find the global Owner role
+        String ownerRoleId = roleRepository.findByName("Owner")
+                .orElseThrow(() -> new ResourceNotFoundException("Role", "name", "Owner"))
+                .getId();
+        
+        // Add creator as member with Owner role
+        organizationMemberRepository.create(orgId, createdBy, ownerRoleId);
     }
     
     private OrganizationResponse mapToOrganizationResponse(OrganizationsRecord record) {

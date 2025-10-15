@@ -29,29 +29,21 @@ public class RoleRepository {
                 .fetch();
     }
     
-    public List<RolesRecord> findByOrganizationId(String organizationId) {
+    public Optional<RolesRecord> findByName(String name) {
         return dsl.selectFrom(ROLES)
-                .where(ROLES.ORGANIZATION_ID.eq(organizationId))
-                .fetch();
-    }
-    
-    public Optional<RolesRecord> findByOrganizationIdAndName(String organizationId, String name) {
-        return dsl.selectFrom(ROLES)
-                .where(ROLES.ORGANIZATION_ID.eq(organizationId)
-                        .and(ROLES.NAME.eq(name)))
+                .where(ROLES.NAME.eq(name))
                 .fetchOptional();
     }
     
-    public String create(String organizationId, String name, boolean isSystemRole, boolean isImmutable) {
+    public String create(String name, String description, long permissions) {
         String id = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         
         RolesRecord record = dsl.newRecord(ROLES);
         record.setId(id);
-        record.setOrganizationId(organizationId);
         record.setName(name);
-        record.setIsSystemRole(isSystemRole ? (byte) 1 : (byte) 0);
-        record.setIsImmutable(isImmutable ? (byte) 1 : (byte) 0);
+        record.setDescription(description);
+        record.setPermissions(permissions);
         record.setCreatedAt(now);
         record.setUpdatedAt(now);
         record.store();
@@ -59,19 +51,30 @@ public class RoleRepository {
         return id;
     }
     
-    public int update(String id, String name) {
-        return dsl.update(ROLES)
-                .set(ROLES.NAME, name)
-                .set(ROLES.UPDATED_AT, LocalDateTime.now())
-                .where(ROLES.ID.eq(id)
-                        .and(ROLES.IS_IMMUTABLE.eq((byte) 0)))
+    public int update(String id, String name, String description, Long permissions) {
+        var updateStep = dsl.update(ROLES);
+        var setStep = updateStep.set(ROLES.UPDATED_AT, LocalDateTime.now());
+        
+        if (name != null) {
+            setStep = setStep.set(ROLES.NAME, name);
+        }
+        
+        if (description != null) {
+            setStep = setStep.set(ROLES.DESCRIPTION, description);
+        }
+        
+        if (permissions != null) {
+            setStep = setStep.set(ROLES.PERMISSIONS, permissions);
+        }
+        
+        return setStep
+                .where(ROLES.ID.eq(id))
                 .execute();
     }
     
     public int delete(String id) {
         return dsl.deleteFrom(ROLES)
-                .where(ROLES.ID.eq(id)
-                        .and(ROLES.IS_IMMUTABLE.eq((byte) 0)))
+                .where(ROLES.ID.eq(id))
                 .execute();
     }
 }
