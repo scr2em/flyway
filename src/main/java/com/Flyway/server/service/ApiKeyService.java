@@ -155,40 +155,6 @@ public class ApiKeyService {
     }
     
     /**
-     * Validate an API key and return the associated data
-     */
-    public Map<String, Object> validateApiKey(String apiKey) {
-        if (apiKey == null || apiKey.isEmpty()) {
-            throw new BadRequestException("API key is required");
-        }
-        
-        if (!apiKey.startsWith(API_KEY_PREFIX)) {
-            throw new BadRequestException("Invalid API key format");
-        }
-        
-        // Extract prefix to quickly find potential matches
-        String keyPrefix = apiKey.substring(0, Math.min(15, apiKey.length()));
-        
-        // Find by prefix and check hash
-        for (ApiKeysRecord record : apiKeyRepository.findByKeyPrefix(keyPrefix)) {
-            if (passwordEncoder.matches(apiKey, record.getKeyHash())) {
-                // Update last used timestamp
-                apiKeyRepository.updateLastUsedAt(record.getId());
-                
-                Map<String, Object> result = new HashMap<>();
-                result.put("id", record.getId());
-                result.put("bundleId", record.getBundleId());
-                result.put("organizationId", record.getOrganizationId());
-                result.put("name", record.getName());
-                
-                return result;
-            }
-        }
-        
-        throw new BadRequestException("Invalid API key");
-    }
-    
-    /**
      * Direct lookup of API key by exact value
      */
     public Map<String, Object> lookupApiKey(String apiKey) {
@@ -196,14 +162,28 @@ public class ApiKeyService {
             throw new BadRequestException("API key is required");
         }
         
-        // Direct database lookup
-        Optional<ApiKeysRecord> record = apiKeyRepository.findByApiKey(apiKey);
+        // Extract the prefix to narrow down candidates
+        String keyPrefix = apiKey.substring(0, Math.min(15, apiKey.length()));
         
-        if (record.isEmpty()) {
+        // Find all API keys with this prefix (should be unique)
+        List<ApiKeysRecord> candidates = apiKeyRepository.findByKeyPrefix(keyPrefix);
+        
+        if (candidates.isEmpty()) {
             throw new BadRequestException("Invalid API key");
         }
         
-        ApiKeysRecord apiKeyRecord = record.get();
+        // Verify the plain API key against the stored hashes
+        ApiKeysRecord apiKeyRecord = null;
+        for (ApiKeysRecord candidate : candidates) {
+            if (passwordEncoder.matches(apiKey, candidate.getKeyHash())) {
+                apiKeyRecord = candidate;
+                break;
+            }
+        }
+        
+        if (apiKeyRecord == null) {
+            throw new BadRequestException("Invalid API key");
+        }
         
         // Update last used timestamp
         apiKeyRepository.updateLastUsedAt(apiKeyRecord.getId());
@@ -213,6 +193,7 @@ public class ApiKeyService {
         result.put("bundleId", apiKeyRecord.getBundleId());
         result.put("organizationId", apiKeyRecord.getOrganizationId());
         result.put("name", apiKeyRecord.getName());
+        result.put("createdBy", apiKeyRecord.getCreatedBy());
         
         return result;
     }

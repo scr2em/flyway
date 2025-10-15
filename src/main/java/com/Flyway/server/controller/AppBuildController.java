@@ -55,8 +55,9 @@ public class AppBuildController {
         
         String bundleId = (String) apiKeyData.get("bundleId");
         String organizationId = (String) apiKeyData.get("organizationId");
+        String createdBy = (String) apiKeyData.get("createdBy");
         
-        // Upload the build (using API key ID as the uploaded_by field)
+        // Upload the build (using the user who created the API key as uploaded_by)
         Map<String, Object> response = appBuildService.uploadBuildViaApiKey(
                 organizationId,
                 bundleId,
@@ -64,7 +65,7 @@ public class AppBuildController {
                 branchName,
                 commitMessage,
                 nativeVersion,
-                (String) apiKeyData.get("id"),
+                createdBy,
                 file
         );
         

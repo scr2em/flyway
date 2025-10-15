@@ -144,14 +144,5 @@ public class ApiKeyRepository {
                 .where(API_KEYS.KEY_PREFIX.eq(keyPrefix))
                 .fetch();
     }
-    
-    /**
-     * Find API key by exact key value (direct lookup)
-     */
-    public Optional<ApiKeysRecord> findByApiKey(String apiKey) {
-        return dsl.selectFrom(API_KEYS)
-                .where(API_KEYS.KEY_HASH.eq(apiKey))
-                .fetchOptional();
-    }
 }
 
