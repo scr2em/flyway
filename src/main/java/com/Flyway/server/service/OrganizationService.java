@@ -64,8 +64,13 @@ public class OrganizationService {
             throw new ConflictException("You are already a member of an organization. Users can only be in one organization.");
         }
         
+        // Check if subdomain is already taken
+        if (organizationRepository.existsBySubdomain(request.getSubdomain())) {
+            throw new ConflictException("Subdomain '" + request.getSubdomain() + "' is already taken. Please choose a different subdomain.");
+        }
+        
         // Create organization
-        String orgId = organizationRepository.create(request.getName(), createdBy);
+        String orgId = organizationRepository.create(request.getName(), request.getSubdomain(), createdBy);
         
         // Assign Owner role to creator
         assignOwnerRole(orgId, createdBy);
@@ -87,6 +92,8 @@ public class OrganizationService {
         organizationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", id));
         
+        // Subdomain cannot be changed after organization creation
+        // Use the existing subdomain from the database
         organizationRepository.update(id, request.getName());
         OrganizationResponse response = getOrganizationById(id);
         
@@ -121,6 +128,7 @@ public class OrganizationService {
         return new OrganizationResponse()
                 .id(record.getId())
                 .name(record.getName())
+                .subdomain(record.getSubdomain())
                 .description(null) // Description not stored in database
                 .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
                 .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null);

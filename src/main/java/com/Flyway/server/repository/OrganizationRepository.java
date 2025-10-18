@@ -35,13 +35,14 @@ public class OrganizationRepository {
                 .fetch();
     }
     
-    public String create(String name, String createdBy) {
+    public String create(String name, String subdomain, String createdBy) {
         String id = UUID.randomUUID().toString();
         LocalDateTime now = LocalDateTime.now();
         
         OrganizationsRecord record = dsl.newRecord(ORGANIZATIONS);
         record.setId(id);
         record.setName(name);
+        record.setSubdomain(subdomain);
         record.setCreatedBy(createdBy);
         record.setCreatedAt(now);
         record.setUpdatedAt(now);
@@ -70,6 +71,19 @@ public class OrganizationRepository {
                         .where(ORGANIZATIONS.ID.eq(organizationId)
                                 .and(ORGANIZATIONS.CREATED_BY.eq(userId)))
         );
+    }
+    
+    public boolean existsBySubdomain(String subdomain) {
+        return dsl.fetchExists(
+                dsl.selectFrom(ORGANIZATIONS)
+                        .where(ORGANIZATIONS.SUBDOMAIN.eq(subdomain))
+        );
+    }
+    
+    public Optional<OrganizationsRecord> findBySubdomain(String subdomain) {
+        return dsl.selectFrom(ORGANIZATIONS)
+                .where(ORGANIZATIONS.SUBDOMAIN.eq(subdomain))
+                .fetchOptional();
     }
 }
 

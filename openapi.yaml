@@ -103,10 +103,17 @@ components:
       description: Request to create a new organization
       required:
         - name
+        - subdomain
       properties:
         name:
           type: string
           description: Organization name
+        subdomain:
+          type: string
+          pattern: '^[a-z0-9]([a-z0-9-]*[a-z0-9])?$'
+          minLength: 3
+          maxLength: 63
+          description: Organization subdomain (lowercase alphanumeric with hyphens, 3-63 characters)
         description:
           type: string
           description: Organization description
@@ -271,6 +278,7 @@ components:
       required:
         - id
         - name
+        - subdomain
       properties:
         id:
           type: string
@@ -278,6 +286,9 @@ components:
         name:
           type: string
           description: Organization name
+        subdomain:
+          type: string
+          description: Organization subdomain
 
     UserStatusResponse:
       type: object
@@ -315,6 +326,7 @@ components:
       required:
         - id
         - name
+        - subdomain
         - createdAt
       properties:
         id:
@@ -323,6 +335,9 @@ components:
         name:
           type: string
           description: Organization name
+        subdomain:
+          type: string
+          description: Organization subdomain
         description:
           type: string
           description: Organization description
