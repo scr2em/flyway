@@ -52,18 +52,6 @@ public class OrganizationService {
     
     @Transactional
     public OrganizationResponse createOrganization(CreateOrganizationRequest request, String createdBy) {
-        // Check if user has already created an organization
-        // Rule: users can only create 1 organization
-        if (!organizationRepository.findByCreatedBy(createdBy).isEmpty()) {
-            throw new ConflictException("You have already created an organization. Users can only create one organization.");
-        }
-        
-        // Check if user is already a member of an organization
-        // Rule: users can only be in 1 organization
-        if (!organizationMemberRepository.findByUserId(createdBy).isEmpty()) {
-            throw new ConflictException("You are already a member of an organization. Users can only be in one organization.");
-        }
-        
         // Check if subdomain is already taken
         if (organizationRepository.existsBySubdomain(request.getSubdomain())) {
             throw new ConflictException("Subdomain '" + request.getSubdomain() + "' is already taken. Please choose a different subdomain.");

@@ -78,10 +78,13 @@ public class OrganizationMemberService {
         userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", request.getUserId()));
         
-        // Check if user is already in ANY organization (enforce 1 org per user rule)
-        List<?> existingMemberships = memberRepository.findByUserId(request.getUserId());
-        if (!existingMemberships.isEmpty()) {
-            throw new ConflictException("User is already a member of an organization. Users can only be in one organization.");
+        // Check if user is already a member of THIS organization
+        List<OrganizationMembersRecord> existingMemberships = memberRepository.findByUserId(request.getUserId());
+        boolean alreadyMember = existingMemberships.stream()
+                .anyMatch(membership -> membership.getOrganizationId().equals(organizationId));
+        
+        if (alreadyMember) {
+            throw new ConflictException("User is already a member of this organization.");
         }
         
         // Add member

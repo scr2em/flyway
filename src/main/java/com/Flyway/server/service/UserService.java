@@ -2,7 +2,8 @@ package com.Flyway.server.service;
 
 import com.Flyway.server.dto.generated.UpdateUserRequest;
 import com.Flyway.server.dto.generated.UserResponse;
-import com.Flyway.server.dto.generated.UserResponseOrganization;
+import com.Flyway.server.dto.generated.UserOrganizationResponse;
+import com.Flyway.server.dto.generated.UserOrganizationMembership;
 import com.Flyway.server.dto.generated.RoleResponse;
 import com.Flyway.server.dto.generated.UserStatusResponse;
 import com.Flyway.server.dto.generated.UserStatusEnum;
@@ -95,27 +96,7 @@ public class UserService {
         return getUserById(id);
     }
     
-    @Transactional
-    public void deleteUser(String id) {
-        UsersRecord user = userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
-        
-        // Check if user is an organization owner
-        List<?> ownedOrganizations = organizationRepository.findByCreatedBy(id);
-        if (!ownedOrganizations.isEmpty()) {
-            throw new ForbiddenException("Cannot delete user who is an organization owner. Please transfer ownership or delete the organization first.");
-        }
-        
-        // Get user's organization
-        List<OrganizationMembersRecord> memberships = organizationMemberRepository.findByUserId(id);
-        if (!memberships.isEmpty()) {
-            String organizationId = memberships.get(0).getOrganizationId();
-            // Delete the invitation for this user in this organization
-            invitationRepository.deleteByEmailAndOrganizationId(user.getEmail(), organizationId);
-        }
-        
-        userRepository.delete(id);
-    }
+   
     
     @Transactional
     public UserResponse verifyEmail(String id) {
@@ -175,54 +156,64 @@ public class UserService {
                     .status(statusEnum);
         }
         
-        // Get organization and role from organization_members table (user can only be in 1 organization)
-        UserResponseOrganization organization = null;
-        RoleResponse role = null;
+        // Get all organization memberships for the user
+        List<UserOrganizationMembership> organizations = new java.util.ArrayList<>();
         List<OrganizationMembersRecord> orgMembers = organizationMemberRepository.findByUserId(userId);
-        if (!orgMembers.isEmpty()) {
-            OrganizationMembersRecord orgMember = orgMembers.get(0);
+        
+        for (OrganizationMembersRecord orgMember : orgMembers) {
             String organizationId = orgMember.getOrganizationId();
             OrganizationsRecord orgRecord = organizationRepository.findById(organizationId).orElse(null);
             
             if (orgRecord != null) {
-                organization = new UserResponseOrganization()
+                // Create organization response
+                UserOrganizationResponse organization = new UserOrganizationResponse()
                         .id(orgRecord.getId())
+                        .subdomain(orgRecord.getSubdomain())
                         .name(orgRecord.getName());
-            }
-            
-            // Get role information
-            String roleId = orgMember.getRoleId();
-            if (roleId != null) {
-                RolesRecord roleRecord = roleRepository.findById(roleId).orElse(null);
-                if (roleRecord != null) {
-                    String permissionsValue = PermissionUtil.toPermissionString(roleRecord.getPermissions());
-                    role = new RoleResponse()
-                            .id(roleRecord.getId())
-                            .name(roleRecord.getName())
-                            .description(roleRecord.getDescription())
-                            .permissionsValue(permissionsValue)
-                            .createdAt(roleRecord.getCreatedAt() != null ? roleRecord.getCreatedAt().atOffset(ZoneOffset.UTC) : null)
-                            .updatedAt(roleRecord.getUpdatedAt() != null ? roleRecord.getUpdatedAt().atOffset(ZoneOffset.UTC) : null);
+                
+                // Get role information
+                RoleResponse role = null;
+                String roleId = orgMember.getRoleId();
+                if (roleId != null) {
+                    RolesRecord roleRecord = roleRepository.findById(roleId).orElse(null);
+                    if (roleRecord != null) {
+                        String permissionsValue = PermissionUtil.toPermissionString(roleRecord.getPermissions());
+                        role = new RoleResponse()
+                                .id(roleRecord.getId())
+                                .name(roleRecord.getName())
+                                .description(roleRecord.getDescription())
+                                .permissionsValue(permissionsValue)
+                                .createdAt(roleRecord.getCreatedAt() != null ? roleRecord.getCreatedAt().atOffset(ZoneOffset.UTC) : null)
+                                .updatedAt(roleRecord.getUpdatedAt() != null ? roleRecord.getUpdatedAt().atOffset(ZoneOffset.UTC) : null);
+                    }
                 }
-            }
-        }
-        
-        // Get invitation status by joining with invitations table
-        // For organization owners who were not invited, this will be null
-        InvitationStatusResponse invitationStatusResponse = null;
-        List<InvitationsRecord> invitations = invitationRepository.findByEmail(record.getEmail());
-        if (!invitations.isEmpty()) {
-            // Get the most recent invitation
-            InvitationsRecord invitation = invitations.get(0);
-            String invitationStatusId = invitation.getInvitationStatusId();
-            InvitationStatusesRecord invitationStatusRecord = invitationStatusRepository.findById(invitationStatusId).orElse(null);
-            
-            if (invitationStatusRecord != null) {
-                String invitationStatusCode = invitationStatusRecord.getCode();
-                InvitationStatusEnum invitationStatusEnum = InvitationStatusEnum.fromValue(invitationStatusCode);
-                invitationStatusResponse = new InvitationStatusResponse()
-                        .id(invitationStatusId)
-                        .status(invitationStatusEnum);
+                
+                // Get invitation status for this organization
+                InvitationStatusResponse invitationStatusResponse = null;
+                List<InvitationsRecord> invitations = invitationRepository.findByEmail(record.getEmail());
+                for (InvitationsRecord invitation : invitations) {
+                    if (invitation.getOrganizationId().equals(organizationId)) {
+                        String invitationStatusId = invitation.getInvitationStatusId();
+                        InvitationStatusesRecord invitationStatusRecord = invitationStatusRepository.findById(invitationStatusId).orElse(null);
+                        
+                        if (invitationStatusRecord != null) {
+                            String invitationStatusCode = invitationStatusRecord.getCode();
+                            InvitationStatusEnum invitationStatusEnum = InvitationStatusEnum.fromValue(invitationStatusCode);
+                            invitationStatusResponse = new InvitationStatusResponse()
+                                    .id(invitationStatusId)
+                                    .status(invitationStatusEnum);
+                        }
+                        break;
+                    }
+                }
+                
+                // Create membership object
+                UserOrganizationMembership membership = new UserOrganizationMembership()
+                        .organization(organization)
+                        .role(role)
+                        .invitationStatus(invitationStatusResponse);
+                
+                organizations.add(membership);
             }
         }
         
@@ -236,9 +227,7 @@ public class UserService {
                 .lastName(record.getLastName())
                 .email(record.getEmail())
                 .status(statusResponse)
-                .organization(organization)
-                .role(role)
-                .invitationStatus(invitationStatusResponse)
+                .organizations(organizations)
                 .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
                 .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null);
     }

@@ -233,6 +233,7 @@ components:
         - firstName
         - lastName
         - status
+        - organizations
         - createdAt
       properties:
         id:
@@ -250,19 +251,11 @@ components:
           description: User's last name
         status:
           $ref: '#/components/schemas/UserStatusResponse'
-        organization:
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/UserOrganizationResponse'
-          description: Organization information (null if user is not in an organization)
-        role:
-          $ref: '#/components/schemas/RoleResponse'
-          nullable: true
-          description: Role information (null if user is not in an organization)
-        invitationStatus:
-          $ref: '#/components/schemas/InvitationStatusResponse'
-          nullable: true
-          description: Invitation status (null for organization owners who were not invited)
+        organizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserOrganizationMembership'
+          description: List of organizations the user is a member of
         createdAt:
           type: string
           format: date-time
@@ -271,6 +264,22 @@ components:
           type: string
           format: date-time
           description: When the user was last updated
+    
+    UserOrganizationMembership:
+      type: object
+      description: User's membership in an organization
+      required:
+        - organization
+        - role
+      properties:
+        organization:
+          $ref: '#/components/schemas/UserOrganizationResponse'
+        role:
+          $ref: '#/components/schemas/RoleResponse'
+        invitationStatus:
+          $ref: '#/components/schemas/InvitationStatusResponse'
+          nullable: true
+          description: Invitation status (null for organization owners who were not invited)
 
     UserOrganizationResponse:
       type: object

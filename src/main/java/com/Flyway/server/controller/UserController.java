@@ -64,21 +64,6 @@ public class UserController {
         return ResponseEntity.ok(user);
     }
     
-    @DeleteMapping("/{id}")
-    @RequirePermission("user.delete")
-    public ResponseEntity<Void> deleteUser(
-            @PathVariable String id,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        // Prevent self-deletion
-        if (id.equals(userDetails.getId())) {
-            throw new ForbiddenException("You cannot delete your own account");
-        }
-        // Verify target user belongs to same organization
-        userService.verifyUserInOrganization(id, userDetails.getOrganizationId());
-        userService.deleteUser(id);
-        return ResponseEntity.ok().build();
-    }
-    
     @PostMapping("/{id}/verify-email")
     public ResponseEntity<UserResponse> verifyEmail(
             @PathVariable String id,
