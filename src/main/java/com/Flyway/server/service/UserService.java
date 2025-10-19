@@ -24,7 +24,6 @@ import com.Flyway.server.repository.UserStatusRepository;
 import com.Flyway.server.repository.InvitationRepository;
 import com.Flyway.server.repository.InvitationStatusRepository;
 import com.Flyway.server.repository.RoleRepository;
-import com.Flyway.server.jooq.tables.records.UserStatusesRecord;
 import com.Flyway.server.util.PermissionUtil;
 
 import lombok.RequiredArgsConstructor;
@@ -32,8 +31,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,33 +55,6 @@ public class UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
         
         return mapToUserResponse(user);
-    }
-    
-    public UserResponse getUserByEmail(String email) {
-        UsersRecord user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
-        
-        return mapToUserResponse(user);
-    }
-    
-    public List<UserResponse> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(this::mapToUserResponse)
-                .collect(Collectors.toList());
-    }
-    
-    public List<UserResponse> getUsersByOrganizationId(String organizationId) {
-        // Get all members of the organization
-        List<OrganizationMembersRecord> members = organizationMemberRepository.findByOrganizationId(organizationId);
-        
-        // Map to user responses
-        return members.stream()
-                .map(member -> {
-                    UsersRecord user = userRepository.findById(member.getUserId()).orElse(null);
-                    return user != null ? mapToUserResponse(user) : null;
-                })
-                .filter(userResponse -> userResponse != null)
-                .collect(Collectors.toList());
     }
     
     @Transactional
@@ -120,106 +94,15 @@ public class UserService {
         }
     }
     
-    public void verifyUserInOrganization(String userId, String organizationId) {
-        // Verify user exists
-        userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
-        
-        // Get user's organization membership
-        List<OrganizationMembersRecord> memberships = organizationMemberRepository.findByUserId(userId);
-        
-        if (memberships.isEmpty()) {
-            throw new ForbiddenException("User is not a member of any organization");
-        }
-        
-        // Check if user belongs to the specified organization
-        boolean isInOrganization = memberships.stream()
-                .anyMatch(membership -> membership.getOrganizationId().equals(organizationId));
-        
-        if (!isInOrganization) {
-            throw new ForbiddenException("You do not have access to this user");
-        }
-    }
-    
+  
     private UserResponse mapToUserResponse(UsersRecord record) {
         String userId = record.getId();
-        String userStatusId = record.getUserStatusId();
-        UserStatusesRecord statusRecord = userStatusRepository.findById(userStatusId).orElse(null);
         
-        // Create UserStatusResponse
-        UserStatusResponse statusResponse = null;
-        if (statusRecord != null) {
-            String statusCode = statusRecord.getCode();
-            UserStatusEnum statusEnum = UserStatusEnum.fromValue(statusCode);
-            statusResponse = new UserStatusResponse()
-                    .id(userStatusId)
-                    .status(statusEnum);
-        }
+        // Fetch user status
+        UserStatusResponse statusResponse = buildUserStatusResponse(record.getUserStatusId());
         
-        // Get all organization memberships for the user
-        List<UserOrganizationMembership> organizations = new java.util.ArrayList<>();
-        List<OrganizationMembersRecord> orgMembers = organizationMemberRepository.findByUserId(userId);
-        
-        for (OrganizationMembersRecord orgMember : orgMembers) {
-            String organizationId = orgMember.getOrganizationId();
-            OrganizationsRecord orgRecord = organizationRepository.findById(organizationId).orElse(null);
-            
-            if (orgRecord != null) {
-                // Create organization response
-                UserOrganizationResponse organization = new UserOrganizationResponse()
-                        .id(orgRecord.getId())
-                        .subdomain(orgRecord.getSubdomain())
-                        .name(orgRecord.getName());
-                
-                // Get role information
-                RoleResponse role = null;
-                String roleId = orgMember.getRoleId();
-                if (roleId != null) {
-                    RolesRecord roleRecord = roleRepository.findById(roleId).orElse(null);
-                    if (roleRecord != null) {
-                        String permissionsValue = PermissionUtil.toPermissionString(roleRecord.getPermissions());
-                        role = new RoleResponse()
-                                .id(roleRecord.getId())
-                                .name(roleRecord.getName())
-                                .description(roleRecord.getDescription())
-                                .permissionsValue(permissionsValue)
-                                .createdAt(roleRecord.getCreatedAt() != null ? roleRecord.getCreatedAt().atOffset(ZoneOffset.UTC) : null)
-                                .updatedAt(roleRecord.getUpdatedAt() != null ? roleRecord.getUpdatedAt().atOffset(ZoneOffset.UTC) : null);
-                    }
-                }
-                
-                // Get invitation status for this organization
-                InvitationStatusResponse invitationStatusResponse = null;
-                List<InvitationsRecord> invitations = invitationRepository.findByEmail(record.getEmail());
-                for (InvitationsRecord invitation : invitations) {
-                    if (invitation.getOrganizationId().equals(organizationId)) {
-                        String invitationStatusId = invitation.getInvitationStatusId();
-                        InvitationStatusesRecord invitationStatusRecord = invitationStatusRepository.findById(invitationStatusId).orElse(null);
-                        
-                        if (invitationStatusRecord != null) {
-                            String invitationStatusCode = invitationStatusRecord.getCode();
-                            InvitationStatusEnum invitationStatusEnum = InvitationStatusEnum.fromValue(invitationStatusCode);
-                            invitationStatusResponse = new InvitationStatusResponse()
-                                    .id(invitationStatusId)
-                                    .status(invitationStatusEnum);
-                        }
-                        break;
-                    }
-                }
-                
-                // Create membership object
-                UserOrganizationMembership membership = new UserOrganizationMembership()
-                        .organization(organization)
-                        .role(role)
-                        .invitationStatus(invitationStatusResponse);
-                
-                organizations.add(membership);
-            }
-        }
-        
-        // Convert LocalDateTime to OffsetDateTime
-        LocalDateTime createdAtLocal = record.getCreatedAt();
-        LocalDateTime updatedAtLocal = record.getUpdatedAt();
+        // Fetch organization memberships with batch loading
+        List<UserOrganizationMembership> organizations = buildOrganizationMemberships(userId, record.getEmail());
         
         return new UserResponse()
                 .id(userId)
@@ -228,8 +111,174 @@ public class UserService {
                 .email(record.getEmail())
                 .status(statusResponse)
                 .organizations(organizations)
-                .createdAt(createdAtLocal != null ? createdAtLocal.atOffset(ZoneOffset.UTC) : null)
-                .updatedAt(updatedAtLocal != null ? updatedAtLocal.atOffset(ZoneOffset.UTC) : null);
+                .createdAt(toOffsetDateTime(record.getCreatedAt()))
+                .updatedAt(toOffsetDateTime(record.getUpdatedAt()));
+    }
+    
+    private UserStatusResponse buildUserStatusResponse(String userStatusId) {
+        if (userStatusId == null) {
+            return null;
+        }
+        
+        return userStatusRepository.findById(userStatusId)
+                .map(statusRecord -> {
+                    UserStatusEnum statusEnum = UserStatusEnum.fromValue(statusRecord.getCode());
+                    return new UserStatusResponse()
+                            .id(userStatusId)
+                            .status(statusEnum);
+                })
+                .orElse(null);
+    }
+    
+    private List<UserOrganizationMembership> buildOrganizationMemberships(String userId, String userEmail) {
+        // Fetch all organization memberships for the user
+        List<OrganizationMembersRecord> orgMembers = organizationMemberRepository.findByUserId(userId);
+        if (orgMembers.isEmpty()) {
+            return List.of();
+        }
+        
+        // Batch fetch all related data
+        List<String> organizationIds = orgMembers.stream()
+                .map(OrganizationMembersRecord::getOrganizationId)
+                .collect(Collectors.toList());
+        
+        List<String> roleIds = orgMembers.stream()
+                .map(OrganizationMembersRecord::getRoleId)
+                .filter(roleId -> roleId != null)
+                .distinct()
+                .collect(Collectors.toList());
+        
+        // Fetch all organizations, roles, and invitations in batch
+        Map<String, OrganizationsRecord> organizationMap = organizationRepository.findByIds(organizationIds)
+                .stream()
+                .collect(Collectors.toMap(OrganizationsRecord::getId, org -> org));
+        
+        Map<String, RolesRecord> roleMap = roleRepository.findByIds(roleIds)
+                .stream()
+                .collect(Collectors.toMap(RolesRecord::getId, role -> role));
+        
+        // Fetch all invitations for the user's email once
+        Map<String, InvitationsRecord> invitationsByOrgId = invitationRepository.findByEmail(userEmail)
+                .stream()
+                .collect(Collectors.toMap(
+                        InvitationsRecord::getOrganizationId,
+                        invitation -> invitation,
+                        (existing, replacement) -> existing // Keep first if duplicates
+                ));
+        
+        // Fetch invitation statuses if any invitations exist
+        Map<String, InvitationStatusesRecord> invitationStatusMap = Map.of();
+        if (!invitationsByOrgId.isEmpty()) {
+            List<String> invitationStatusIds = invitationsByOrgId.values().stream()
+                    .map(InvitationsRecord::getInvitationStatusId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            
+            invitationStatusMap = invitationStatusRepository.findByIds(invitationStatusIds)
+                    .stream()
+                    .collect(Collectors.toMap(InvitationStatusesRecord::getId, status -> status));
+        }
+        
+        // Build organization memberships
+        return buildOrganizationMembershipsFromMaps(
+                orgMembers, 
+                organizationMap, 
+                roleMap, 
+                invitationsByOrgId, 
+                invitationStatusMap
+        );
+    }
+    
+    private List<UserOrganizationMembership> buildOrganizationMembershipsFromMaps(
+            List<OrganizationMembersRecord> orgMembers,
+            Map<String, OrganizationsRecord> organizationMap,
+            Map<String, RolesRecord> roleMap,
+            Map<String, InvitationsRecord> invitationsByOrgId,
+            Map<String, InvitationStatusesRecord> invitationStatusMap) {
+        
+        List<UserOrganizationMembership> memberships = new java.util.ArrayList<>();
+        
+        for (OrganizationMembersRecord orgMember : orgMembers) {
+            String organizationId = orgMember.getOrganizationId();
+            OrganizationsRecord orgRecord = organizationMap.get(organizationId);
+            
+            if (orgRecord == null) {
+                continue; // Skip if organization not found
+            }
+            
+            // Build organization response
+            UserOrganizationResponse organization = new UserOrganizationResponse()
+                    .id(orgRecord.getId())
+                    .subdomain(orgRecord.getSubdomain())
+                    .name(orgRecord.getName());
+            
+            // Build role response
+            RoleResponse role = buildRoleResponse(orgMember.getRoleId(), roleMap);
+            
+            // Build invitation status response
+            InvitationStatusResponse invitationStatus = buildInvitationStatusResponse(
+                    organizationId, 
+                    invitationsByOrgId, 
+                    invitationStatusMap
+            );
+            
+            // Create membership
+            UserOrganizationMembership membership = new UserOrganizationMembership()
+                    .organization(organization)
+                    .role(role)
+                    .invitationStatus(invitationStatus);
+            
+            memberships.add(membership);
+        }
+        
+        return memberships;
+    }
+    
+    private RoleResponse buildRoleResponse(String roleId, Map<String, RolesRecord> roleMap) {
+        if (roleId == null) {
+            return null;
+        }
+        
+        RolesRecord roleRecord = roleMap.get(roleId);
+        if (roleRecord == null) {
+            return null;
+        }
+        
+        String permissionsValue = PermissionUtil.toPermissionString(roleRecord.getPermissions());
+        return new RoleResponse()
+                .id(roleRecord.getId())
+                .name(roleRecord.getName())
+                .description(roleRecord.getDescription())
+                .permissionsValue(permissionsValue)
+                .createdAt(toOffsetDateTime(roleRecord.getCreatedAt()))
+                .updatedAt(toOffsetDateTime(roleRecord.getUpdatedAt()));
+    }
+    
+    private InvitationStatusResponse buildInvitationStatusResponse(
+            String organizationId,
+            Map<String, InvitationsRecord> invitationsByOrgId,
+            Map<String, InvitationStatusesRecord> invitationStatusMap) {
+        
+        InvitationsRecord invitation = invitationsByOrgId.get(organizationId);
+        if (invitation == null) {
+            return null;
+        }
+        
+        String invitationStatusId = invitation.getInvitationStatusId();
+        InvitationStatusesRecord invitationStatusRecord = invitationStatusMap.get(invitationStatusId);
+        
+        if (invitationStatusRecord == null) {
+            return null;
+        }
+        
+        InvitationStatusEnum invitationStatusEnum = InvitationStatusEnum.fromValue(invitationStatusRecord.getCode());
+        return new InvitationStatusResponse()
+                .id(invitationStatusId)
+                .status(invitationStatusEnum);
+    }
+    
+    private OffsetDateTime toOffsetDateTime(LocalDateTime localDateTime) {
+        return localDateTime != null ? localDateTime.atOffset(ZoneOffset.UTC) : null;
     }
 }
 

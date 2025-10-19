@@ -32,5 +32,14 @@ public class InvitationStatusRepository {
         return dsl.selectFrom(INVITATION_STATUSES)
                 .fetch();
     }
+    
+    public List<InvitationStatusesRecord> findByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return dsl.selectFrom(INVITATION_STATUSES)
+                .where(INVITATION_STATUSES.ID.in(ids))
+                .fetch();
+    }
 }
 

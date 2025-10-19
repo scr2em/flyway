@@ -77,5 +77,14 @@ public class RoleRepository {
                 .where(ROLES.ID.eq(id))
                 .execute();
     }
+    
+    public List<RolesRecord> findByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return dsl.selectFrom(ROLES)
+                .where(ROLES.ID.in(ids))
+                .fetch();
+    }
 }
 

@@ -85,5 +85,14 @@ public class OrganizationRepository {
                 .where(ORGANIZATIONS.SUBDOMAIN.eq(subdomain))
                 .fetchOptional();
     }
+    
+    public List<OrganizationsRecord> findByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return dsl.selectFrom(ORGANIZATIONS)
+                .where(ORGANIZATIONS.ID.in(ids))
+                .fetch();
+    }
 }
 
