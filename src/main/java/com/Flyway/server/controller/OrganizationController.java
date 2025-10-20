@@ -14,12 +14,22 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/organizations")
 @RequiredArgsConstructor
 public class OrganizationController {
     
     private final OrganizationService organizationService;
+    
+    @GetMapping
+    public ResponseEntity<List<OrganizationResponse>> getCurrentUserOrganizations(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        
+        List<OrganizationResponse> organizations = organizationService.getCurrentUserOrganizations(userDetails.getId());
+        return ResponseEntity.ok(organizations);
+    }
     
     @GetMapping("/subdomain/{subdomain}")
     public ResponseEntity<OrganizationResponse> getOrganizationBySubdomain(

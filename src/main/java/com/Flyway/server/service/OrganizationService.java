@@ -64,6 +64,23 @@ public class OrganizationService {
                 .collect(Collectors.toList());
     }
     
+    public List<OrganizationResponse> getCurrentUserOrganizations(String userId) {
+        // Get all organization memberships for the user
+        List<String> organizationIds = organizationMemberRepository.findByUserId(userId)
+                .stream()
+                .map(member -> member.getOrganizationId())
+                .collect(Collectors.toList());
+        
+        if (organizationIds.isEmpty()) {
+            return List.of();
+        }
+        
+        // Fetch all organizations
+        return organizationRepository.findByIds(organizationIds).stream()
+                .map(this::mapToOrganizationResponse)
+                .collect(Collectors.toList());
+    }
+    
     @Transactional
     public OrganizationResponse createOrganization(CreateOrganizationRequest request, String createdBy) {
         // Check if subdomain is already taken

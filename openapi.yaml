@@ -1087,6 +1087,26 @@ paths:
           $ref: '#/components/responses/NotFoundError'
 
   /organizations:
+    get:
+      operationId: getCurrentUserOrganizations
+      summary: Get current user's organizations
+      description: Returns all organizations that the authenticated user is a member of
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Organizations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OrganizationResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
     post:
       operationId: createOrganization
       summary: Create a new organization
