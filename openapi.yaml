@@ -1087,27 +1087,6 @@ paths:
           $ref: '#/components/responses/NotFoundError'
 
   /organizations:
-    get:
-      operationId: getCurrentOrganization
-      summary: Get current organization
-      tags:
-        - Organizations
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: Organization retrieved successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrganizationResponse'
-        '401':
-          $ref: '#/components/responses/UnauthorizedError'
-        '403':
-          $ref: '#/components/responses/ForbiddenError'
-        '404':
-          $ref: '#/components/responses/NotFoundError'
-    
     post:
       operationId: createOrganization
       summary: Create a new organization
@@ -1149,6 +1128,38 @@ paths:
       responses:
         '200':
           description: Organization updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /organizations/subdomain/{subdomain}:
+    get:
+      operationId: getOrganizationBySubdomain
+      summary: Get organization by subdomain
+      description: Get organization by subdomain. The authenticated user must be a member of the organization.
+      tags:
+        - Organizations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subdomain
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Organization subdomain
+      responses:
+        '200':
+          description: Organization retrieved successfully
           content:
             application/json:
               schema:

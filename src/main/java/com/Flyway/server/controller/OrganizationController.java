@@ -21,10 +21,12 @@ public class OrganizationController {
     
     private final OrganizationService organizationService;
     
-    @GetMapping
-    public ResponseEntity<OrganizationResponse> getCurrentOrganization(
+    @GetMapping("/subdomain/{subdomain}")
+    public ResponseEntity<OrganizationResponse> getOrganizationBySubdomain(
+            @PathVariable String subdomain,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        OrganizationResponse organization = organizationService.getOrganizationById(userDetails.getOrganizationId());
+                
+        OrganizationResponse organization = organizationService.getOrganizationBySubdomain(subdomain, userDetails.getId());
         return ResponseEntity.ok(organization);
     }
 

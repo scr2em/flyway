@@ -6,6 +6,7 @@ import com.Flyway.server.dto.generated.OrganizationResponse;
 import com.Flyway.server.event.OrganizationCreatedEvent;
 import com.Flyway.server.event.OrganizationUpdatedEvent;
 import com.Flyway.server.jooq.tables.records.OrganizationsRecord;
+import com.Flyway.server.exception.BadRequestException;
 import com.Flyway.server.exception.ConflictException;
 import com.Flyway.server.exception.ResourceNotFoundException;
 import com.Flyway.server.repository.OrganizationMemberRepository;
@@ -34,6 +35,19 @@ public class OrganizationService {
     public OrganizationResponse getOrganizationById(String id) {
         OrganizationsRecord org = organizationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Organization", "id", id));
+        
+        return mapToOrganizationResponse(org);
+    }
+    
+    public OrganizationResponse getOrganizationBySubdomain(String subdomain, String userId) {
+        OrganizationsRecord org = organizationRepository.findBySubdomain(subdomain)
+                .orElseThrow(() -> new ResourceNotFoundException("Organization", "subdomain", subdomain));
+        
+        // Verify that the user is a member of this organization
+        boolean isMember = organizationMemberRepository.findByOrganizationIdAndUserId(org.getId(), userId).isPresent();
+        if (!isMember) {
+            throw new BadRequestException("User is not a member of this organization");
+        }
         
         return mapToOrganizationResponse(org);
     }
